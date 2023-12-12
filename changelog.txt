@@ -1,0 +1,29 @@
+###  ChessMaster2023 by Ilyin Yegor changelog  ###
+
+###  Version 0.1  ###
+	* The first version of the engine.
+	* Implemented the Board class using Bit Boards and a number of tricks
+	  related to the board/pieces, some of which were taken from the Stockfish
+	  and some from my old ChessMaster project that I have never published.
+	* Magic bitboards for move generation (the one from Stockfish).
+	  
+	* Correct move generation and making/unmaking moves.
+	* Loading from FEN and getting a FEN from the current position.
+	* Can detect when the game is over with mate, stalemate, the fifty rule,
+	  the triple repetition rule and with low material rule.
+	* Zobrist tables.
+	* Performance test function.
+	
+	* Static evaluation:
+	* Simple evaluation based on material and Piece-Square Tables (written based
+	  on intuition).
+	* Separate scores for opening/middlegame and for endgame.
+	
+	* Search:
+	* Simple search based on NegaMax and AlphaBeta.
+	
+	* Implemented 3 modes of work: own console interface, UCI, and Xboard/Winboard (version >= 2).
+	* Tested in Winboard 4.8 and in Arena (in UCI mode).
+	* Power tested in a tournament (0:10 + 1) of 150 games in total with several engines of comparable level.
+	* Those engines (Cassandre and Belofte) were taken from CCRL.
+	* Power: 900 elo - evaluated with Bayeselo.

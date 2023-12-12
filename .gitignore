@@ -1,0 +1,10 @@
+# No Visual Studio build files
+x64/
+x86/
+
+# No Visual Studio cache
+.vs/
+
+# Other ignored files
+*.user
+*.hint
