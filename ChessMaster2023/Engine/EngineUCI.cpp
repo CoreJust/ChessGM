@@ -17,6 +17,8 @@
 */
 
 #include "Engine.h"
+#include <algorithm>
+
 #include "Utils/CommandHandlingUtils.h"
 #include "Utils/StringUtils.h"
 #include "Search.h"

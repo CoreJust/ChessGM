@@ -96,7 +96,7 @@ namespace scores {
 	void initScores() {
 		Score tmp[32];
 		for (auto pt : PieceType::iter()) {
-			memcpy(tmp, PST[Piece(Color::WHITE, pt)], 32 * sizeof Score);
+			memcpy(tmp, PST[Piece(Color::WHITE, pt)], 32 * sizeof(Score));
 			for (u8 i = 0; i < 32; ++i) {
 				const Rank rank = Rank(i >> 2);
 				const File file = File(i & 3);

@@ -19,9 +19,12 @@
 #pragma once
 
 /*
-*	ChessMasterInfo.h contains several variables with some information on the engine.
+*	test(.h/.cpp) contains a number of tests.
+*	Simulates some of the GoogleTest API.
+*
+*	It is used to make sure the engine works fine after any
+*	changes made to it (or find where the problem is).
 */
 
-constexpr char ENGINE_NAME[] = "ChessMaster";
-constexpr char ENGINE_VERSION[] = "0.1.1";
-constexpr char AUTHOR_NAME[] = "Ilyin Yegor";
+
+void runTests();

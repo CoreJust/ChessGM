@@ -4,7 +4,9 @@ x86/
 
 # No Visual Studio cache
 .vs/
+.packages/
 
 # Other ignored files
 *.user
 *.hint
+*.editorconfig

@@ -59,8 +59,7 @@ std::queue<std::pair<std::string, std::vector<std::string>>> g_queuedCommands;
 void initForConsole() {
 	io::g_out << io::Color::Green
 		<< "Welcome to the "
-		<< io::Color::Blue << ENGINE_NAME
-		<< " " << ENGINE_MAJOR_VERSION << "." << ENGINE_MINOR_VERSION << io::Color::Green
+		<< io::Color::Blue << ENGINE_NAME << " " << ENGINE_VERSION << io::Color::Green
 		<< " chess engine by " << io::Color::Blue << AUTHOR_NAME << io::Color::Green << "!" <<
 		"\nYou are currently in the console mode."\
 		"\nThis engine supports UCI and Xboard/Winboard, so you can run it in GUI."\
@@ -81,14 +80,13 @@ void initForXboard() {
 	g_xboardVersion = str_utils::fromString<u32>(args[0]);
 
 	io::g_out << "feature ping=1, setboard=1, playother=0, san=0, usermove=1, time=1, draw=1, reuse=1, analyze=1, myname=\""
-		<< ENGINE_NAME << " " << ENGINE_MAJOR_VERSION << "." << ENGINE_MINOR_VERSION << " by " << AUTHOR_NAME
-		<< "\"" << std::endl
+		<< ENGINE_NAME << " " << ENGINE_VERSION << " by " << AUTHOR_NAME << "\"" << std::endl
 		<< "feature variants=\"normal\"" << std::endl
 		<< "feature ics=1, name=1, pause=1, colors=0, nps=1, done=1" << std::endl;
 }
 
 void initForUCI() {
-	io::g_out << "id name " << ENGINE_NAME << " " << ENGINE_MAJOR_VERSION << "." << ENGINE_MINOR_VERSION << std::endl
+	io::g_out << "id name " << ENGINE_NAME << " " << ENGINE_VERSION << std::endl
 		<< "id author " << AUTHOR_NAME << std::endl;
 	io::g_out << "uciok" << std::endl;
 }
@@ -125,6 +123,10 @@ void io::Output::logInput(std::string_view str) {
 io::Output& io::Output::operator<<(std::ostream& (__cdecl* func)(std::ostream&)) {
 	if (options::g_debugMode) {
 		s_logFile << func;
+	}
+
+	if (getMode() == IOMode::CONSOLE) {
+		std::cout << Color::White;
 	}
 
 	std::cout << func;

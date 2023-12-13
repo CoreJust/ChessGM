@@ -24,6 +24,7 @@
 #include "MoveGenerationUtils.h"
 #include "Score.h"
 #include "Zobrist.h"
+#include "Engine/Scores.h" // for scores::PST
 
 /*
 *	Board(.h/.cpp) contains the class that handles the state of chessboard
@@ -227,59 +228,6 @@ public:
 	}
 
 
-	///  INTERNAL STATE UPDATE  ///
-
-	// Setups the board once it was loaded
-	INLINE void initInternalState() noexcept {
-		state().checkGivers = computeAttackersOf(m_side.getOpposite(), king(m_side));
-
-		updateInternalState();
-	}
-
-	INLINE void updateInternalState() noexcept {
-		state().checkGivers = computeAttackersOf(m_side.getOpposite(), king(m_side));
-
-		updateInternalState(Color::WHITE);
-		updateInternalState(Color::BLACK);
-	}
-
-	// Updates the internal state for the given side
-	INLINE void updateInternalState(const Color side) noexcept {
-		const Square kingSq = king(side);
-		StateInfo& st = state();
-		st.checkBlockers[side] = 0;
-
-		BitBoard snipers = BitBoard::pseudoAttacks<PieceType::BISHOP>(kingSq).b_and(bishopsAndQueens(side.getOpposite()))
-						  .b_or(BitBoard::pseudoAttacks<PieceType::ROOK>(kingSq).b_and(rooksAndQueens(side.getOpposite())));
-		BitBoard occupancy = allPieces() ^ snipers;
-
-		BB_FOR_EACH(sq, snipers) {
-			BitBoard b = BitBoard::betweenBits(kingSq, sq).b_and(occupancy);
-
-			if (b && !b.hasMoreThanOne()) {
-				st.checkBlockers[side] |= b;
-
-				if (b.b_and(byColor(side))) {
-					st.pinners[side.getOpposite()].set(sq);
-				}
-			}
-		}
-	}
-
-	// Creates and pushes a new state copying some of the previous one and updating some trivial fields
-	INLINE StateInfo& pushNextState() noexcept {
-		StateInfo& result = m_states.emplace_back();
-		StateInfo& prev = m_states[m_states.size() - 2];
-
-		result.castleRight = prev.castleRight;
-		result.fiftyRule = prev.fiftyRule + 1;
-		result.movesFromNull = prev.movesFromNull + 1;
-		result.hash = prev.hash;
-
-		return result;
-	}
-
-
 	///  CM_PURE METHODS  ///
 
 	CM_PURE constexpr BitBoard computeAttackersOf(const Color side, const Square sq) const noexcept {
@@ -470,5 +418,310 @@ public:
 
 	CM_PURE u8 castleRight() const noexcept {
 		return state().castleRight;
+	}
+
+private:
+	
+	
+	///  INTERNAL STATE UPDATE  ///
+
+	// Setups the board once it was loaded
+	INLINE void initInternalState() noexcept {
+		state().checkGivers = computeAttackersOf(m_side.getOpposite(), king(m_side));
+
+		updateInternalState();
+	}
+
+	INLINE void updateInternalState() noexcept {
+		state().checkGivers = computeAttackersOf(m_side.getOpposite(), king(m_side));
+
+		updateInternalState(Color::WHITE);
+		updateInternalState(Color::BLACK);
+	}
+
+	// Updates the internal state for the given side
+	INLINE void updateInternalState(const Color side) noexcept {
+		const Square kingSq = king(side);
+		StateInfo& st = state();
+		st.checkBlockers[side] = 0;
+
+		BitBoard snipers = BitBoard::pseudoAttacks<PieceType::BISHOP>(kingSq).b_and(bishopsAndQueens(side.getOpposite()))
+			.b_or(BitBoard::pseudoAttacks<PieceType::ROOK>(kingSq).b_and(rooksAndQueens(side.getOpposite())));
+		BitBoard occupancy = allPieces() ^ snipers;
+
+		BB_FOR_EACH(sq, snipers) {
+			BitBoard b = BitBoard::betweenBits(kingSq, sq).b_and(occupancy);
+
+			if (b && !b.hasMoreThanOne()) {
+				st.checkBlockers[side] |= b;
+
+				if (b.b_and(byColor(side))) {
+					st.pinners[side.getOpposite()].set(sq);
+				}
+			}
+		}
+	}
+
+	// Creates and pushes a new state copying some of the previous one and updating some trivial fields
+	INLINE StateInfo& pushNextState() noexcept {
+		StateInfo& result = m_states.emplace_back();
+		StateInfo& prev = m_states[m_states.size() - 2];
+
+		result.castleRight = prev.castleRight;
+		result.fiftyRule = prev.fiftyRule + 1;
+		result.movesFromNull = prev.movesFromNull + 1;
+		result.hash = prev.hash;
+
+		return result;
+	}
+
+
+	///  CHANGING BOARD  ///
+
+	// Adds a piece to the board
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side>
+	INLINE constexpr void addPiece(const Piece piece, const Square to) noexcept {
+		m_board[to] = piece;
+		m_pieces[piece].set(to);
+		m_piecesByColor[Side].set(to);
+		m_score[Side] += scores::PST[piece][to];
+		m_material[Side] += Material::materialOf(piece.getType());
+	}
+
+	// Removes a piece from the board
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side>
+	INLINE constexpr void removePiece(const Piece piece, const Square from) noexcept {
+		m_board[from] = Piece::NONE;
+		m_pieces[piece].clear(from);
+		m_piecesByColor[Side].clear(from);
+		m_score[Side] -= scores::PST[piece][from];
+		m_material[Side] -= Material::materialOf(piece.getType());
+	}
+
+	// Moves a piece on the board
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side>
+	INLINE constexpr void movePiece(const Piece piece, const Square from, const Square to) noexcept {
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+
+		m_board[from] = Piece::NONE;
+		m_board[to] = piece;
+		m_pieces[piece] = m_pieces[piece].b_xor(change);
+		m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+		m_score[Side] += scores::PST[piece][to] - scores::PST[piece][from];
+	}
+
+	// Moves a piece on the board and returns the captured piece if there were such
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side>
+	INLINE constexpr Piece movePieceWithCapture(const Piece piece, const Square from, const Square to) noexcept {
+		constexpr Color OppositeSide = Color(Side).getOpposite();
+
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+		const Piece captured = m_board[to];
+
+		m_board[from] = Piece::NONE;
+		m_board[to] = piece;
+		m_pieces[piece] = m_pieces[piece].b_xor(change);
+		m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+		m_score[Side] += scores::PST[piece][to] - scores::PST[piece][from];
+
+		if (captured != Piece::NONE) {
+			m_pieces[captured].clear(to);
+			m_piecesByColor[OppositeSide].clear(to);
+			m_score[OppositeSide] -= scores::PST[captured][to];
+			m_material[OppositeSide] -= Material::materialOf(captured.getType());
+		}
+
+		return captured;
+	}
+
+	// Moves a piece on the board and places the captured piece back
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side>
+	INLINE constexpr void unmovePieceWithCapture(const Piece piece, const Piece captured, const Square from, const Square to) noexcept {
+		constexpr Color OppositeSide = Color(Side).getOpposite();
+
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+
+		m_board[to] = captured;
+		m_board[from] = piece;
+		m_pieces[piece] = m_pieces[piece].b_xor(change);
+		m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+		m_score[Side] -= scores::PST[piece][to] - scores::PST[piece][from];
+
+		if (captured != Piece::NONE) {
+			m_pieces[captured].set(to);
+			m_piecesByColor[OppositeSide].set(to);
+			m_score[OppositeSide] += scores::PST[captured][to];
+			m_material[OppositeSide] += Material::materialOf(captured.getType());
+		}
+	}
+
+	// Does enpassant capture
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side, bool IsDoing>
+	INLINE constexpr void doEnpassant(const Square from, const Square to) noexcept {
+		constexpr Color OppositeSide = Color(Side).getOpposite();
+		constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
+		constexpr Piece OppositePawn = Piece(OppositeSide, PieceType::PAWN);
+
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+		const Square capturedSq = Side == Color::WHITE
+			? to.backward(8)
+			: to.forward(8);
+
+		if constexpr (IsDoing) {
+			m_board[to] = OurPawn;
+			m_board[from] = Piece::NONE;
+			m_board[capturedSq] = Piece::NONE;
+			m_pieces[OurPawn] = m_pieces[OurPawn].b_xor(change);
+			m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+			m_score[Side] += scores::PST[OurPawn][to] - scores::PST[OurPawn][from];
+
+			m_pieces[OppositePawn].clear(capturedSq);
+			m_piecesByColor[OppositeSide].clear(capturedSq);
+			m_score[OppositeSide] -= scores::PST[OppositePawn][capturedSq];
+			m_material[OppositeSide] -= Material::materialOf(PieceType::PAWN);
+		} else {
+			m_board[from] = OurPawn;
+			m_board[to] = Piece::NONE;
+			m_board[capturedSq] = OppositePawn;
+			m_pieces[OurPawn] = m_pieces[OurPawn].b_xor(change);
+			m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+			m_score[Side] -= scores::PST[OurPawn][to] - scores::PST[OurPawn][from];
+
+			m_pieces[OppositePawn].set(capturedSq);
+			m_piecesByColor[OppositeSide].set(capturedSq);
+			m_score[OppositeSide] += scores::PST[OppositePawn][capturedSq];
+			m_material[OppositeSide] += Material::materialOf(PieceType::PAWN);
+		}
+	}
+
+	// Promotes the pawn without a capture
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side, bool IsDoing> // Or undoing
+	INLINE constexpr void promotePawn(const Piece promoted, const Square from, const Square to) noexcept {
+		constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
+
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+		if constexpr (IsDoing) {
+			m_board[from] = Piece::NONE;
+			m_board[to] = promoted;
+			m_pieces[OurPawn].clear(from);
+			m_pieces[promoted].set(to);
+			m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+			m_score[Side] += scores::PST[promoted][to] - scores::PST[OurPawn][from];
+			m_material[Side] += Material::materialOf(promoted.getType()) - Material::materialOf(PieceType::PAWN);
+		} else {
+			m_board[to] = Piece::NONE;
+			m_board[from] = OurPawn;
+			m_pieces[OurPawn].set(from);
+			m_pieces[promoted].clear(to);
+			m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+			m_score[Side] -= scores::PST[promoted][to] - scores::PST[OurPawn][from];
+			m_material[Side] -= Material::materialOf(promoted.getType()) - Material::materialOf(PieceType::PAWN);
+		}
+	}
+
+	// Promotes a pawn with a capture
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side> // Or undoing
+	INLINE constexpr Piece promotePawnWithCapture(const Piece promoted, const Square from, const Square to) noexcept {
+		constexpr Color OppositeSide = Color(Side).getOpposite();
+		constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
+
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+		const Piece captured = m_board[to];
+
+		m_board[from] = Piece::NONE;
+		m_board[to] = promoted;
+		m_pieces[OurPawn].clear(from);
+		m_pieces[promoted].set(to);
+		m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+		m_score[Side] += scores::PST[promoted][to] - scores::PST[OurPawn][from];
+		m_material[Side] += Material::materialOf(promoted.getType()) - Material::materialOf(PieceType::PAWN);
+
+		if (captured != Piece::NONE) {
+			m_pieces[captured].clear(to);
+			m_piecesByColor[OppositeSide].clear(to);
+			m_score[OppositeSide] -= scores::PST[captured][to];
+			m_material[OppositeSide] -= Material::materialOf(captured.getType());
+		}
+
+		return captured;
+	}
+
+	// Undoes a promotion of a pawn with capture
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side> // Or undoing
+	INLINE constexpr void unpromotePawnWithCapture(const Piece promoted, const Piece captured, const Square from, const Square to) noexcept {
+		constexpr Color OppositeSide = Color(Side).getOpposite();
+		constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
+
+		const BitBoard change = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+
+		m_board[to] = captured;
+		m_board[from] = OurPawn;
+		m_pieces[OurPawn].set(from);
+		m_pieces[promoted].clear(to);
+		m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(change);
+		m_score[Side] -= scores::PST[promoted][to] - scores::PST[OurPawn][from];
+		m_material[Side] -= Material::materialOf(promoted.getType()) - Material::materialOf(PieceType::PAWN);
+
+		if (captured != Piece::NONE) {
+			m_pieces[captured].set(to);
+			m_piecesByColor[OppositeSide].set(to);
+			m_score[OppositeSide] += scores::PST[captured][to];
+			m_material[OppositeSide] += Material::materialOf(captured.getType());
+		}
+	}
+
+	// Does the castling
+	// ! DOES NOT MODIFY THE HASH AND CASTLING RIGHTS
+	template<Color::Value Side, bool IsDoing> // Or undoing
+	INLINE constexpr void doCastling(const Square from, const Square to) noexcept {
+		constexpr Piece OurRook = Piece(Side, PieceType::ROOK);
+		constexpr Piece OurKing = Piece(Side, PieceType::KING);
+
+		const Square kingFrom = IsDoing ? from : to;
+		const Square kingTo = IsDoing ? to : from;
+
+		const BitBoard changeKing = BitBoard::fromSquare(from).b_or(BitBoard::fromSquare(to));
+		if (to.getFile() == File::G) { // King side castling
+			constexpr Square ROOK_FROM = Square::makeRelativeSquare(Side, IsDoing ? Square::H1 : Square::F1);
+			constexpr Square ROOK_TO = Square::makeRelativeSquare(Side, IsDoing ? Square::F1 : Square::H1);
+			constexpr BitBoard changeRook = BitBoard::fromSquares({ ROOK_FROM, ROOK_TO });
+
+			const BitBoard ourChange = changeKing.b_or(changeRook);
+
+			m_board[kingFrom] = Piece::NONE;
+			m_board[kingTo] = OurKing;
+			m_board[ROOK_FROM] = Piece::NONE;
+			m_board[ROOK_TO] = OurRook;
+			m_pieces[OurKing] = m_pieces[OurKing].b_xor(changeKing);
+			m_pieces[OurRook] = m_pieces[OurRook].b_xor(changeRook);
+			m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(ourChange);
+			m_score[Side] += scores::PST[OurKing][kingTo] - scores::PST[OurKing][kingFrom]
+				+ scores::PST[OurRook][ROOK_TO] - scores::PST[OurRook][ROOK_FROM];
+		} else { // Queen side castling
+			constexpr Square ROOK_FROM = Square::makeRelativeSquare(Side, IsDoing ? Square::A1 : Square::D1);
+			constexpr Square ROOK_TO = Square::makeRelativeSquare(Side, IsDoing ? Square::D1 : Square::A1);
+			constexpr BitBoard changeRook = BitBoard::fromSquares({ ROOK_FROM, ROOK_TO });
+
+			const BitBoard ourChange = changeKing.b_or(changeRook);
+
+			m_board[kingFrom] = Piece::NONE;
+			m_board[kingTo] = OurKing;
+			m_board[ROOK_FROM] = Piece::NONE;
+			m_board[ROOK_TO] = OurRook;
+			m_pieces[OurKing] = m_pieces[OurKing].b_xor(changeKing);
+			m_pieces[OurRook] = m_pieces[OurRook].b_xor(changeRook);
+			m_piecesByColor[Side] = m_piecesByColor[Side].b_xor(ourChange);
+			m_score[Side] += scores::PST[OurKing][kingTo] - scores::PST[OurKing][kingFrom]
+				+ scores::PST[OurRook][ROOK_TO] - scores::PST[OurRook][ROOK_FROM];
+		}
 	}
 };

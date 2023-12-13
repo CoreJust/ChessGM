@@ -28,14 +28,13 @@
 *	and starts the engine.
 * 
 *	TODO for the next versions:
-*		1) Quiescence search
-*		2) Move picking (with SEE)
-*		3) History euristic
+*		1) Material combinations evaluation
+*		2) Pawn structure evaluation
+*		3) Mobility evaluation
 *		4) Scores optimization
-*		5) Tempo bonus
-*		6) Review time limits (breaks) calculation
+*		5) Hash table
+*		6) Killer moves
 *		7) Extensions
-*		8) PV
 * 
 *	Bizzare ideas:
 *		1) Dynamic square's "importance" (center, king zone, piece concentration, etc)
@@ -43,9 +42,15 @@
 *		2) Factors beside material in game stage evaluation (for score interpolation)
 *		   e.g. pawns advance
 * 
-*	Current TODO: -
+*	Current TODO:
+*		1) Quiescence search
+*		2) Move picking (with SEE)
+*		3) History euristic
+*		5) Tempo bonus
+*		6) Review time limits (breaks) calculation
+*		7) PV
 * 
-*	Bugs: -
+*	Bugs:
 */
 
 int main() {

@@ -1,5 +1,14 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.1.1  ###
+	* Minor improvements.
+	* Added tests and fixed several bugs in move generation and FEN reading.
+	* Slight move doing/undoing optimizations (~4-7% faster)
+	* Reduced Intel-dependence (now should compile for other CPUs).
+	* Added GCC support and a Makefile.
+	* Improved console interface of the engine.
+
+
 ###  Version 0.1  ###
 	* The first version of the engine.
 	* Implemented the Board class using Bit Boards and a number of tricks

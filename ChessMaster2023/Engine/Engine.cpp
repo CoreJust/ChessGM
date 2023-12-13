@@ -26,13 +26,14 @@ namespace engine {
 	void run(io::IOMode mode) {
 		bool (*handle)(std::string, const std::vector<std::string>&)
 			= mode == io::CONSOLE
-			? handleConsole
+				? handleConsole
 			: mode == io::UCI
-			? handleUCI
-			: handleXboard;
+				? handleUCI
+				: handleXboard;
 
-		if (mode == io::CONSOLE) { // Set the default position right away in console mode
-			g_board = Board::makeInitialPosition();
+		if (mode == io::CONSOLE) {
+			g_board = Board::makeInitialPosition(); // Set the default position right away in console mode
+			options::g_forceMode = true;
 		} else if (mode == io::UCI) {
 			options::g_forceMode = true;
 		}
@@ -53,10 +54,10 @@ namespace engine {
 
 		void (*check)(std::string, const std::vector<std::string>&)
 			= io::getMode() == io::CONSOLE
-			? checkConsole
+				? checkConsole
 			: io::getMode() == io::UCI
-			? checkUCI
-			: checkXboard;
+				? checkUCI
+				: checkXboard;
 
 		std::vector<std::string> args;
 		std::string cmd = io::getCommand(args, false);

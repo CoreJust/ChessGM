@@ -17,9 +17,10 @@
 */
 
 #include "Board.h"
+#include <cstring>
+
 #include "Utils/ConsoleColor.h"
 #include "Utils/StringUtils.h"
-#include "Engine/Scores.h" // for scores::PST
 
 Board::Board() noexcept
 	: m_material { 0, 0 },
@@ -150,9 +151,9 @@ Board Board::fromFEN(std::string_view fen, bool& success) {
 	}
 
 	// Fifty rule
-	result.fiftyRule() = str_utils::fromString<u8>(fen.substr(i), i);
+	result.fiftyRule() = str_utils::fromString<u8>(fen.substr(++i), i);
 
-	if (++i >= fen.size() - 1) {
+	if (++i >= fen.size()) {
 		return result;
 	}
 
@@ -331,12 +332,6 @@ void Board::makeMove(const Move m) noexcept {
 
 template<Color::Value Side>
 void Board::makeMove(const Move m) noexcept {
-	constexpr Color OppositeSide = Color(Side).getOpposite();
-	constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
-	constexpr Piece OppositePawn = Piece(OppositeSide, PieceType::PAWN);
-	constexpr Piece OurRook = Piece(Side, PieceType::ROOK);
-	constexpr Piece OurKing = Piece(Side, PieceType::KING);
-
 	StateInfo& st = pushNextState();
 
 	const Square from = m.getFrom();
@@ -348,26 +343,17 @@ void Board::makeMove(const Move m) noexcept {
 
 	st.ep = Square::NO_POS;
 	++m_moveCount;
-	m_side = OppositeSide;
+	m_side = Color(Side).getOpposite();
 	st.hash ^= zobrist::MOVE_KEY;
-
-	// Common changes
-
-	m_piecesByColor[Side].move(from, to);
 
 	// Changes by move type
 
 	switch (mt) {
 	case MoveType::SIMPLE: {
-		if (Piece captured = (st.captured = m_board[to]); captured != Piece::NONE) {
-			m_pieces[captured].clear(to);
-			m_piecesByColor[OppositeSide].clear(to);
-
-			m_material[OppositeSide] -= Material::materialOf(captured.getType());
-			m_score[OppositeSide] -= scores::PST[captured][to];
-			st.hash ^= zobrist::PIECE[captured][to];
+		if ((st.captured = movePieceWithCapture<Side>(piece, from, to)) != Piece::NONE) {
+			st.hash ^= zobrist::PIECE[st.captured][to];
 			st.fiftyRule = 0;
-		} else if (piece == OurPawn) {
+		} else if (piece == Piece(Side, PieceType::PAWN)) {
 			st.fiftyRule = 0;
 			if (Square::distance(from, to) == 2) { // Double pawn push
 				st.ep = Side == Color::WHITE
@@ -376,13 +362,6 @@ void Board::makeMove(const Move m) noexcept {
 			}
 		}
 
-		// Moving the piece
-
-		m_board[to] = piece;
-		m_board[from] = Piece::NONE;
-		m_pieces[piece].move(from, to);
-
-		m_score[Side] += scores::PST[piece][to] - scores::PST[piece][from];
 		st.hash ^= zobrist::PIECE[piece][from] ^ zobrist::PIECE[piece][to];
 
 		// Castling rights update
@@ -391,24 +370,15 @@ void Board::makeMove(const Move m) noexcept {
 	} break;
 	case MoveType::PROMOTION: {
 		Piece promoted = Piece(Side, m.getPromotedPiece());
-		if (Piece captured = (st.captured = m_board[to]); captured != Piece::NONE) {
-			m_pieces[captured].clear(to);
-			m_piecesByColor[OppositeSide].clear(to);
-
-			m_material[OppositeSide] -= Material::materialOf(captured.getType());
-			m_score[OppositeSide] -= scores::PST[captured][to];
-			st.hash ^= zobrist::PIECE[captured][to];
+		if (i32(to) - from != (Side == Color::WHITE ? 8 : -8)) {
+			if ((st.captured = promotePawnWithCapture<Side>(promoted, from, to)) != Piece::NONE) {
+				st.hash ^= zobrist::PIECE[st.captured][to];
+			}
+		} else {
+			promotePawn<Side, true>(promoted, from, to);
 		}
 
-		m_board[from] = Piece::NONE;
-		m_pieces[OurPawn].clear(from);
-		m_board[to] = promoted;
-		m_pieces[promoted].set(to);
-
-		m_material[Side] += Material::materialOf(m.getPromotedPiece()) - Material::materialOf(PieceType::PAWN);
-		m_score[Side] += scores::PST[Piece(Side, m.getPromotedPiece())][to] - scores::PST[OurPawn][from];
-		st.hash ^= zobrist::PIECE[OurPawn][from] ^ zobrist::PIECE[Piece(Side, m.getPromotedPiece())][to];
-
+		st.hash ^= zobrist::PIECE[Piece(Side, PieceType::PAWN)][from] ^ zobrist::PIECE[Piece(Side, m.getPromotedPiece())][to];
 		st.fiftyRule = 0;
 
 		// Castling rights update
@@ -416,53 +386,32 @@ void Board::makeMove(const Move m) noexcept {
 		st.castleRight &= Castle::getCastleChangeMask(to);
 	} break;
 	case MoveType::ENPASSANT: {
-		const Square capturedSq = Side == Color::WHITE
-			? to.backward(8)
-			: to.forward(8);
+		constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
+
+		doEnpassant<Side, true>(from, to);
 
 		st.fiftyRule = 0;
-
-		m_board[from] = Piece::NONE;
-		m_board[to] = OurPawn;
-		m_pieces[OurPawn].move(from, to);
-		m_board[capturedSq] = Piece::NONE;
-		m_pieces[OppositePawn].clear(capturedSq);
-		m_piecesByColor[OppositeSide].clear(capturedSq);
-
-		m_material[OppositeSide] -= Material::materialOf(PieceType::PAWN);
-		m_score[OppositeSide] -= scores::PST[OppositePawn][capturedSq];
-		m_score[Side] += scores::PST[OurPawn][to] - scores::PST[OurPawn][from];
 		st.hash ^= zobrist::PIECE[OurPawn][from] ^ zobrist::PIECE[OurPawn][to];
 	} break;
 	case MoveType::CASTLE: {
+		constexpr Piece OurKing = Piece(Side, PieceType::KING);
+		constexpr Piece OurRook = Piece(Side, PieceType::ROOK);
+
 		st.castleRight &= Castle::getCastleChangeMask(from); // King square
 		st.castleRight |= Castle::getBitMaskFor(Castle::CASTLE_DONE, Side);
 
-		m_board[from] = Piece::NONE;
-		m_board[to] = OurKing;
-		m_pieces[OurKing].move(from, to);
-		m_score[Side] += scores::PST[OurKing][to] - scores::PST[OurKing][from];
+		doCastling<Side, true>(from, to);
 		st.hash ^= zobrist::PIECE[OurKing][from] ^ zobrist::PIECE[OurKing][to];
 
 		if (to.getFile() == File::G) { // King side castling
 			constexpr Square ROOK_FROM = Square::makeRelativeSquare(Side, Square::H1);
 			constexpr Square ROOK_TO = Square::makeRelativeSquare(Side, Square::F1);
 
-			m_board[ROOK_FROM] = Piece::NONE;
-			m_board[ROOK_TO] = OurRook;
-			m_pieces[OurRook].move(ROOK_FROM, ROOK_TO);
-			m_piecesByColor[Side].move(ROOK_FROM, ROOK_TO);
-			m_score[Side] += scores::PST[OurRook][ROOK_TO] - scores::PST[OurRook][ROOK_FROM];
 			st.hash ^= zobrist::PIECE[OurRook][ROOK_FROM] ^ zobrist::PIECE[OurRook][ROOK_TO];
 		} else { // Queen side castling
 			constexpr Square ROOK_FROM = Square::makeRelativeSquare(Side, Square::A1);
 			constexpr Square ROOK_TO = Square::makeRelativeSquare(Side, Square::D1);
 
-			m_board[ROOK_FROM] = Piece::NONE;
-			m_board[ROOK_TO] = OurRook;
-			m_pieces[OurRook].move(ROOK_FROM, ROOK_TO);
-			m_piecesByColor[Side].move(ROOK_FROM, ROOK_TO);
-			m_score[Side] += scores::PST[OurRook][ROOK_TO] - scores::PST[OurRook][ROOK_FROM];
 			st.hash ^= zobrist::PIECE[OurRook][ROOK_FROM] ^ zobrist::PIECE[OurRook][ROOK_TO];
 		}
 	} break;
@@ -511,85 +460,18 @@ void Board::unmakeMove(const Move m) noexcept  {
 	const MoveType mt = m.getMoveType();
 	const Piece piece = m_board[to];
 
-	m_piecesByColor[Side].move(to, from);
-
 	switch (mt) {
-	case MoveType::SIMPLE: {
-		if (captured) {
-			m_pieces[captured].set(to);
-			m_piecesByColor[OppositeSide].set(to);
-			
-			m_material[OppositeSide] += Material::materialOf(captured.getType());
-			m_score[OppositeSide] += scores::PST[captured][to];
-		}
-
-		// Moving the piece back
-		m_board[from] = piece;
-		m_board[to] = captured;
-		m_pieces[piece].move(to, from);
-
-		m_score[Side] -= scores::PST[piece][to] - scores::PST[piece][from];
-	} break;
-	case MoveType::PROMOTION: {
-		Piece promoted = Piece(Side, m.getPromotedPiece());
-		if (captured) {
-			m_pieces[captured].set(to);
-			m_piecesByColor[OppositeSide].set(to);
-
-			m_material[OppositeSide] += Material::materialOf(captured.getType());
-			m_score[OppositeSide] += scores::PST[captured][to];
-		}
-
-		m_board[to] = captured;
-		m_pieces[OurPawn].set(from);
-		m_board[from] = OurPawn;
-		m_pieces[promoted].clear(to);
-
-		m_material[Side] -= Material::materialOf(m.getPromotedPiece()) - Material::materialOf(PieceType::PAWN);
-		m_score[Side] -= scores::PST[Piece(Side, m.getPromotedPiece())][to] - scores::PST[OurPawn][from];
-	} break;
-	case MoveType::ENPASSANT: {
-		const Square capturedSq = Side == Color::WHITE
-			? to.backward(8)
-			: to.forward(8);
-
-		m_board[to] = Piece::NONE;
-		m_board[from] = OurPawn;
-		m_pieces[OurPawn].move(to, from);
-		m_board[capturedSq] = OppositePawn;
-		m_pieces[OppositePawn].set(capturedSq);
-		m_piecesByColor[OppositeSide].set(capturedSq);
-
-		m_material[OppositeSide] += Material::materialOf(PieceType::PAWN);
-		m_score[OppositeSide] += scores::PST[OppositePawn][capturedSq];
-		m_score[Side] -= scores::PST[OurPawn][to] - scores::PST[OurPawn][from];
-	} break;
-	case MoveType::CASTLE: {
-		m_board[to] = Piece::NONE;
-		m_board[from] = OurKing;
-		m_pieces[OurKing].move(to, from);
-		m_score[Side] -= scores::PST[OurKing][to] - scores::PST[OurKing][from];
-
-		if (to.getFile() == File::G) { // King side castling
-			constexpr Square ROOK_FROM = Square::makeRelativeSquare(Side, Square::H1);
-			constexpr Square ROOK_TO = Square::makeRelativeSquare(Side, Square::F1);
-
-			m_board[ROOK_TO] = Piece::NONE;
-			m_board[ROOK_FROM] = OurRook;
-			m_pieces[OurRook].move(ROOK_TO, ROOK_FROM);
-			m_piecesByColor[Side].move(ROOK_TO, ROOK_FROM);
-			m_score[Side] -= scores::PST[OurRook][ROOK_TO] - scores::PST[OurRook][ROOK_FROM];
-		} else { // Queen side castling
-			constexpr Square ROOK_FROM = Square::makeRelativeSquare(Side, Square::A1);
-			constexpr Square ROOK_TO = Square::makeRelativeSquare(Side, Square::D1);
-
-			m_board[ROOK_TO] = Piece::NONE;
-			m_board[ROOK_FROM] = OurRook;
-			m_pieces[OurRook].move(ROOK_TO, ROOK_FROM);
-			m_piecesByColor[Side].move(ROOK_TO, ROOK_FROM);
-			m_score[Side] -= scores::PST[OurRook][ROOK_TO] - scores::PST[OurRook][ROOK_FROM];
-		}
-	} break;
+		case MoveType::SIMPLE: unmovePieceWithCapture<Side>(piece, captured, from, to); break;
+		case MoveType::PROMOTION: {
+			Piece promoted = Piece(Side, m.getPromotedPiece());
+			if (captured) {
+				unpromotePawnWithCapture<Side>(promoted, captured, from, to);
+			} else {
+				promotePawn<Side, false>(promoted, from, to);
+			}
+		} break;
+		case MoveType::ENPASSANT: doEnpassant<Side, false>(from, to); break;
+		case MoveType::CASTLE: doCastling<Side, false>(from, to);  break;
 	default: break;
 	}
 }
@@ -643,13 +525,13 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 
 	const BitBoard trg =
 		Mode == movegen::CAPTURES
-		? enemyPieces // For captures mode, we look only for moves where the to square has an enemy piece on it
+			? enemyPieces // For captures mode, we look only for moves where the to square has an enemy piece on it
 		: Mode == movegen::CHECK_EVASIONS
-		? BitBoard::betweenBits(kingSq, checkGivers().lsb()) // For check evasions we look only for moves that block the check
-		: friendlyPieces.b_not(); // All the suitable targets in all moves mode
+			? BitBoard::betweenBits(kingSq, checkGivers().lsb()) // For check evasions we look only for moves that block the check
+			: friendlyPieces.b_not(); // All the suitable targets in all moves mode
 
 
-// King
+	// King
 
 	BitBoard bb = byPiece(Piece(Side, PieceType::KING));
 	BitBoard attacks = BitBoard::attacksOf(PieceType::KING, kingSq, allPieces)
@@ -685,7 +567,7 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 
 		BB_FOR_EACH(sq, upPromotions) {
 			moves.emplace<MoveType::PROMOTION>(sq.shift(Down), sq, PieceType::QUEEN);
-			if constexpr (Mode == movegen::ALL_MOVES) {
+			if constexpr (Mode != movegen::CAPTURES) {
 				moves.emplace<MoveType::PROMOTION>(sq.shift(Down), sq, PieceType::ROOK);
 				moves.emplace<MoveType::PROMOTION>(sq.shift(Down), sq, PieceType::BISHOP);
 				moves.emplace<MoveType::PROMOTION>(sq.shift(Down), sq, PieceType::KNIGHT);
@@ -694,7 +576,7 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 
 		BB_FOR_EACH(sq, upLeftPromotions) {
 			moves.emplace<MoveType::PROMOTION>(sq.shift(DownRight), sq, PieceType::QUEEN);
-			if constexpr (Mode == movegen::ALL_MOVES) {
+			if constexpr (Mode != movegen::CAPTURES) {
 				moves.emplace<MoveType::PROMOTION>(sq.shift(DownRight), sq, PieceType::ROOK);
 				moves.emplace<MoveType::PROMOTION>(sq.shift(DownRight), sq, PieceType::BISHOP);
 				moves.emplace<MoveType::PROMOTION>(sq.shift(DownRight), sq, PieceType::KNIGHT);
@@ -703,7 +585,7 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 
 		BB_FOR_EACH(sq, upRightPromotions) {
 			moves.emplace<MoveType::PROMOTION>(sq.shift(DownLeft), sq, PieceType::QUEEN);
-			if constexpr (Mode == movegen::ALL_MOVES) {
+			if constexpr (Mode != movegen::CAPTURES) {
 				moves.emplace<MoveType::PROMOTION>(sq.shift(DownLeft), sq, PieceType::ROOK);
 				moves.emplace<MoveType::PROMOTION>(sq.shift(DownLeft), sq, PieceType::BISHOP);
 				moves.emplace<MoveType::PROMOTION>(sq.shift(DownLeft), sq, PieceType::KNIGHT);

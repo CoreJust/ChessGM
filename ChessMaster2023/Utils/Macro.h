@@ -54,9 +54,6 @@
 #define unreachable() std::unreachable()
 #elif defined(__clang__) || defined(__GNUC__) || defined(__INTEL_COMPILER)
 #define unreachable() __builtin_unreachable()
-#ifdef __GNUC__
-#error "GNU compiler is ill-supported. Use MSVC or Clang, or remove this error and try to modify the code"
-#endif
 #elif defined(_MSC_VER)
 #define unreachable() __assume(false)
 #else

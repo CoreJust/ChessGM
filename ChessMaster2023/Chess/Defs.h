@@ -335,12 +335,12 @@ public:
 		switch (dir) {
 			case Direction::UP: return Square(m_value + 8);
 			case Direction::DOWN: return Square(m_value - 8);
-			case Direction::LEFT: return Square(m_value + 1);
-			case Direction::RIGHT: return Square(m_value - 1);
-			case Direction::UPRIGHT: return Square(m_value + 7);
-			case Direction::UPLEFT: return Square(m_value + 9);
-			case Direction::DOWNRIGHT: return Square(m_value - 9);
-			case Direction::DOWNLEFT: return Square(m_value - 7);
+			case Direction::LEFT: return Square(m_value - 1);
+			case Direction::RIGHT: return Square(m_value + 1);
+			case Direction::UPRIGHT: return Square(m_value + 9);
+			case Direction::UPLEFT: return Square(m_value + 7);
+			case Direction::DOWNRIGHT: return Square(m_value - 7);
+			case Direction::DOWNLEFT: return Square(m_value - 9);
 		default: return NO_POS;
 		}
 	}
@@ -429,7 +429,7 @@ public:
 		return bool(rights & mask);
 	}
 
-	CM_PURE constexpr static u8 getCastleChangeMask(const Square sq) noexcept {
+	CM_PURE static u8 getCastleChangeMask(const Square sq) noexcept {
 		high_assert(sq < 64);
 
 		return s_castleRightMasks[sq];

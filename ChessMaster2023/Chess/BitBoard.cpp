@@ -17,6 +17,7 @@
 */
 
 #include "BitBoard.h"
+#include <cstring>
 
 
 u64 BitBoard::s_directionBits[Square::VALUES_COUNT][Direction::VALUES_COUNT];
@@ -115,10 +116,6 @@ void BitBoard::init() noexcept {
 void BitBoard::initMagicBitBoards(const PieceType pt, BitBoard* table, MagicBitBoards* magics) noexcept {
 	BitBoard occupancy[4096], reference[4096], edges, b;
 	i32      cnt = 0, size = 0;
-#ifndef ENABLE_INTRINSICS
-	i32 epoch[4096] = {};
-	i32 seed[Rank::VALUES_COUNT] = { 728, 10316, 55013, 32803, 12281, 15100, 16645, 255 };
-#endif
 
 	for (Square s : Square::iter()) {
 		edges = ((BitBoard::RANK_1 | BitBoard::fromRank(Rank::R8)) & ~BitBoard::fromRank(Square(s).getRank()))
@@ -126,61 +123,17 @@ void BitBoard::initMagicBitBoards(const PieceType pt, BitBoard* table, MagicBitB
 
 		MagicBitBoards& m = magics[s];
 		m.mask = slidingAttack(pt, s, 0) & ~edges;
-#ifndef ENABLE_INTRINSICS
-		m.shift = 64 - BitBoard(m.mask).popcnt();
-#endif
 		m.attacks = (u64*)(s == Square::A1 ? table : (BitBoard*)magics[s - 1].attacks + size);
 
 		b = size = 0;
 		do {
 			occupancy[size] = b;
 			reference[size] = slidingAttack(pt, s, b);
-#ifdef ENABLE_INTRINSICS
-			m.attacks[_pext_u64(b, m.mask)] = reference[size];
-#endif
+			m.attacks[bit_utils::parallelExtract(b, m.mask)] = reference[size];
 
 			size++;
 			b = (b - m.mask) & m.mask;
 		} while (b);
-
-#ifndef ENABLE_INTRINSICS
-		u64 randState = seed[s.getRank()];
-		auto sparseRand = [&randState]() -> u64 {
-			randState ^= randState >> 12;
-			randState ^= randState << 25;
-			randState ^= randState >> 27;
-			const u64 val1 = randState * 2685821657736338717ull;
-
-			randState ^= randState >> 12;
-			randState ^= randState << 25;
-			randState ^= randState >> 27;
-			const u64 val2 = randState * 2685821657736338717ull;
-
-			randState ^= randState >> 12;
-			randState ^= randState << 25;
-			randState ^= randState >> 27;
-			const u64 val3 = randState * 2685821657736338717ull;
-
-			return val1 & val2 & val3;
-		};
-
-		for (int i = 0; i < size;) {
-			for (m.magic = 0; BitBoard((m.magic * m.mask) >> 56).popcnt() < 6;) {
-				m.magic = sparseRand();
-			}
-
-			for (++cnt, i = 0; i < size; ++i) {
-				u32 idx = m.computeIndex(occupancy[i]);
-
-				if (epoch[idx] < cnt) {
-					epoch[idx] = cnt;
-					m.attacks[idx] = reference[i];
-				} else if (m.attacks[idx] != reference[i]) {
-					break;
-				}
-			}
-		}
-#endif
 	}
 }
 

@@ -17,20 +17,11 @@
 */
 
 #pragma once
-#include <bit>
 #include <string_view>
 #include <ostream>
 
-#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
-#include <intrin.h>
-#include <nmmintrin.h>
-#include <immintrin.h>
-#define ENABLE_INTRINSICS
-#else
-#error "This compiler is ill-supported. Either use Intel (or MSVC) or try to remove this line and compile the code."
-#endif
-
 #include "Utils/Types.h"
+#include "Utils/BitUtils.h"
 #include "Defs.h"
 
 /*
@@ -52,17 +43,9 @@ public:
 	// Based on the magics from stockfish
 	struct MagicBitBoards final {
 		u64 mask, *attacks;
-#ifndef ENABLE_INTRINSICS
-		u64 magic;
-		u32 shift;
-#endif
 
-		u32 computeIndex(const BitBoard occ) const noexcept {
-#ifdef ENABLE_INTRINSICS
-			return _pext_u64(occ, mask);
-#else
-			return ((occ & mask) * magic) >> shift;
-#endif
+		CM_PURE u32 computeIndex(const BitBoard occ) const noexcept {
+			return bit_utils::parallelExtract(occ, mask);
 		}
 	};
 
@@ -208,8 +191,8 @@ public:
 	}
 
 	// Number of set bits
-	CM_PURE constexpr i32 popcnt() const noexcept {
-		return std::popcount(m_value);
+	CM_PURE constexpr u8 popcnt() const noexcept {
+		return bit_utils::popCount(m_value);
 	}
 
 	// Returns the last bit index and erases it
@@ -222,18 +205,10 @@ public:
 
 			return result;
 		} else {
-#ifdef ENABLE_INTRINSICS
-			unsigned long square;
-			_BitScanForward64(&square, m_value);
+			const u8 result = bit_utils::leastSignificantBit(m_value);
 			m_value &= (m_value - 1);
 
-			return Square(square);
-#else // Highly inefficient
-			Square result = lsb();
-			m_value &= (m_value - 1);
-
-			return result;
-#endif
+			return Square(result);
 		}
 	}
 
@@ -251,21 +226,7 @@ public:
 
 			return Square(result);
 		} else {
-#ifdef ENABLE_INTRINSICS
-			unsigned long square;
-			_BitScanForward64(&square, m_value);
-
-			return Square(square);
-#else // Highly inefficient
-			u8 result = 0;
-			u64 value = m_value;
-			while ((value & 1) == 0) {
-				value >>= 1;
-				result++;
-			}
-
-			return Square(result);
-#endif
+			return Square(bit_utils::leastSignificantBit(m_value));
 		}
 	}
 
@@ -283,21 +244,7 @@ public:
 
 			return Square(result);
 		} else {
-#ifdef ENABLE_INTRINSICS
-			unsigned long square;
-			_BitScanReverse64(&square, m_value);
-
-			return Square(square);
-#else // Highly inefficient
-			u8 result = 0;
-			u64 value = m_value;
-			while (value & ~1ull) {
-				value >>= 1;
-				result++;
-			}
-
-			return Square(result);
-#endif
+			return Square(bit_utils::mostSignificantBit(m_value));
 		}
 	}
 
@@ -326,12 +273,12 @@ public:
 		switch (dir) {
 			case Direction::UP: return BitBoard(m_value << 8);
 			case Direction::DOWN: return BitBoard(m_value >> 8);
-			case Direction::LEFT: return BitBoard(m_value << 1).b_and(~BitBoard::fromFile(File::A));
-			case Direction::RIGHT: return BitBoard(m_value >> 1).b_and(~BitBoard::fromFile(File::H));
-			case Direction::UPRIGHT: return BitBoard(m_value << 7).b_and(~BitBoard::fromFile(File::H));
-			case Direction::UPLEFT: return BitBoard(m_value << 9).b_and(~BitBoard::fromFile(File::A));
-			case Direction::DOWNRIGHT: return BitBoard(m_value >> 9).b_and(~BitBoard::fromFile(File::H));
-			case Direction::DOWNLEFT: return BitBoard(m_value >> 7).b_and(~BitBoard::fromFile(File::A));
+			case Direction::LEFT: return BitBoard(m_value >> 1).b_and(~BitBoard::fromFile(File::H));
+			case Direction::RIGHT: return BitBoard(m_value << 1).b_and(~BitBoard::fromFile(File::A));
+			case Direction::UPRIGHT: return BitBoard(m_value << 9).b_and(~BitBoard::fromFile(File::A));
+			case Direction::UPLEFT: return BitBoard(m_value << 7).b_and(~BitBoard::fromFile(File::H));
+			case Direction::DOWNRIGHT: return BitBoard(m_value >> 7).b_and(~BitBoard::fromFile(File::A));
+			case Direction::DOWNLEFT: return BitBoard(m_value >> 9).b_and(~BitBoard::fromFile(File::H));
 		default: return 0;
 		}
 	}
@@ -376,7 +323,7 @@ public:
 		}
 	}
 
-	CM_PURE constexpr static BitBoard pawnAttacks(const Color color, const Square sq) noexcept {
+	CM_PURE static BitBoard pawnAttacks(const Color color, const Square sq) noexcept {
 		return s_pawnAttacks[color][sq];
 	}
 

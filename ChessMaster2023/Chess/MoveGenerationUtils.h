@@ -67,14 +67,14 @@ public:
 		*(m_end++) = move;
 	}
 
-	INLINE constexpr void emplace(const Square from, const Square to) noexcept {
+	INLINE void emplace(const Square from, const Square to) noexcept {
 		assert(m_end < m_data + MAX_MOVES);
 
 		::new(m_end++) Move(from, to);
 	}
 
 	template<MoveType::Value MT>
-	INLINE constexpr void emplace(const Square from, const Square to, const PieceType promotedPiece = PieceType::KNIGHT) noexcept {
+	INLINE void emplace(const Square from, const Square to, const PieceType promotedPiece = PieceType::KNIGHT) noexcept {
 		assert(m_end < m_data + MAX_MOVES);
 
 		::new(m_end++) Move(from, to, MT, promotedPiece);

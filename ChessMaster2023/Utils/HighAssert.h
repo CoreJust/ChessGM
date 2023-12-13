@@ -27,9 +27,7 @@
 #define ENABLE_HIGH_ASSERT
 
 #ifndef ENABLE_HIGH_ASSERT
-#define high_assert(value, msg)
 #define high_assert(value)
 #else
-#define high_assert(value, msg) ASSERT((value) && (msg))
 #define high_assert(value) ASSERT(value)
 #endif // !ENABLE_HIGH_ASSERT

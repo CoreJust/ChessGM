@@ -17,10 +17,13 @@
 */
 
 #include "Engine.h"
+#include <chrono>
+
 #include "Utils/CommandHandlingUtils.h"
 #include "Utils/StringUtils.h"
 #include "Eval.h"
 #include "Search.h"
+#include "test.h"
 
 namespace engine {
 	void handleIncorrectCommandConsole(std::string_view cmd, const std::vector<std::string>& args, CommandError err) {
@@ -39,7 +42,7 @@ namespace engine {
 		default: break;
 		}
 
-		io::g_out << "\nType h or help for the list of possible commands" << io::Color::White << std::endl;
+		io::g_out << "\nType h or help for the list of possible commands" << std::endl;
 	}
 
 	// Doing a move
@@ -55,8 +58,8 @@ namespace engine {
 		g_limits.addMoves(1);
 		g_moveHistory.push_back(result.best);
 
-		io::g_out << "Best move: " << io::Color::Blue << result.best << io::Color::White
-			<< "\nValue: " << io::Color::Green << result.value << io::Color::White << " cantipawns\n"
+		io::g_out << "Best move: " << io::Color::Blue << result.best << std::endl
+			<< "Value: " << io::Color::Green << result.value << io::Color::White << " cantipawns\n"
 			<< g_board << std::endl;
 	}
 
@@ -82,21 +85,22 @@ namespace engine {
 			"\n\teval - returns static evaluation of the current position"\
 			"\n\tsearch [depth: uint] - returns the position evaluation based on search for given depth"\
 			"\n\tperft [depth: uint] - starts the performance test for the given depth and prints the number of nodes"\
-			"\n\t? - stops the current search and prints the results or makes a move immediately"
-			<< io::Color::White << std::endl;
+			"\n\t? - stops the current search and prints the results or makes a move immediately"\
+			"\n\ttest - developer's command, runs all the tests"
+			<< std::endl;
 	}
 
 	void trySetNewFen() {
 		std::string currentFen = g_board.toFEN();
 		auto currentMoveHistory = g_moveHistory;
 		if (!newGame(io::getAllArguments())) {
-			io::g_out << io::Color::Red << "Illegal position; the board was not changed" << io::Color::White << std::endl;
+			io::g_out << io::Color::Red << "Illegal position; the board was not changed" << std::endl;
 
 			bool _;
 			g_board = Board::fromFEN(currentFen, _);
 			g_moveHistory = currentMoveHistory;
 		} else {
-			io::g_out << io::Color::Green << "Position set successfully!" << io::Color::White << std::endl;
+			io::g_out << io::Color::Green << "Position set successfully!" << std::endl;
 		}
 	}
 
@@ -111,33 +115,36 @@ namespace engine {
 				break;
 			CASE_CMD("setfen", 1, 99) trySetNewFen(); break;
 			CASE_CMD("fen", 0, 0)
-				io::g_out << "Current position's FEN: " << io::Color::Blue << g_board.toFEN() << io::Color::White << std::endl;
+				io::g_out << "Current position's FEN: " << io::Color::Blue << g_board.toFEN() << std::endl;
 				break;
 			CASE_CMD_WITH_VARIANT("board", "print", 0, 0)
 				io::g_out << "Current position:\n" << g_board << std::endl;
 				break;
 			CASE_CMD("moves", 0, 0) {
-				io::g_out << "Available moves:\n" << io::Color::Green;
 				MoveList moves;
+				u32 legalMoves = 0;
 				g_board.generateMoves(moves);
 
+				io::g_out << "Available moves:" << io::Color::Green;
 				for (auto m : moves) {
 					if (g_board.isLegal(m)) {
-						io::g_out << '\t' << m << std::endl;
+						legalMoves++;
+						io::g_out << "\n\t" << m;
 					}
 				}
 
-				io::g_out << io::Color::White;
+				io::g_out << std::endl << "Total moves: " << io::Color::Blue 
+					<< legalMoves << std::endl;
 			} break;
 			CASE_CMD("do", 1, 1)
 				if (!makeMove(args[0])) {
-					io::g_out << io::Color::Red << "Illegal move!" << io::Color::White << std::endl;
+					io::g_out << io::Color::Red << "Illegal move!" << std::endl;
 				} else if (!options::g_forceMode && !options::g_analyzeMode) {
 					consoleGo();
 				} break;
 			CASE_CMD("undo", 0, 0)
 				if (!unmakeMove()) {
-					io::g_out << io::Color::Red << "Cannot unmake move: " << g_errorMessage << io::Color::White << std::endl;
+					io::g_out << io::Color::Red << "Cannot unmake move: " << g_errorMessage << std::endl;
 				} break;
 			CASE_CMD("random", 0, 0) options::g_randomMode = !options::g_randomMode; break;
 			CASE_CMD("force", 0, 0) options::g_forceMode = true; break;
@@ -157,25 +164,39 @@ namespace engine {
 			CASE_CMD("set_max_depth", 1, 1) g_limits.setDepthLimit(str_utils::fromString<u8>(args[0])); break;
 			CASE_CMD("go", 0, 0) options::g_forceMode = false; consoleGo(); break;
 			CASE_CMD("history", 0, 0)
-				io::g_out << "History of the moves in the current game:\n" << io::Color::Green;
+				io::g_out << "History of the moves in the current game (" << g_moveHistory.size() << " moves made):" 
+					<< io::Color::Green;
 				for (auto m : g_moveHistory) {
-					io::g_out << '\t' << m << std::endl;
+					io::g_out << "\n\t" << m;
 				}
 
-				io::g_out << io::Color::White;
+				io::g_out << std::endl;
 				break;
 			CASE_CMD("eval", 0, 0)
-				io::g_out << "Evaluation: " << io::Color::Green << eval(g_board) << " cantipawns" << io::Color::White << std::endl;
+				io::g_out << "Evaluation: " << io::Color::Green << eval(g_board) << " cantipawns" << std::endl;
 				break;
 			CASE_CMD("search", 1, 1) {
 				Value result = search(g_board, -INF, INF, str_utils::fromString<u8>(args[0]), 0);
-				io::g_out << "Search result: " << io::Color::Green << result << " cantipawns" << io::Color::White << std::endl;
+				io::g_out << "Search result: " << io::Color::Green << result << " cantipawns" << std::endl;
 			} break;
 			CASE_CMD("perft", 1, 1) {
-				auto nodes = engine::perft(g_board, str_utils::fromString<u8>(args[0]));
-				io::g_out << "Nodes found: " << nodes << std::endl;
+				using namespace std::chrono;
+
+				auto start = high_resolution_clock::now();
+				NodesCount nodes = engine::perft(g_board, str_utils::fromString<u8>(args[0]));
+				auto perftTime = duration_cast<nanoseconds>(high_resolution_clock::now() - start).count();
+
+				double perftTimeInSeconds = perftTime / 1'000'000'000.0;
+				double kiloNodesPerSecond = nodes / (perftTimeInSeconds * 1000);
+
+				io::g_out << "Nodes found: " << io::Color::Blue << nodes << std::endl
+					<< "Time: " << io::Color::Blue << perftTimeInSeconds << io::Color::White << " seconds" << std::endl
+					<< "Kn/S: " << io::Color::Blue << kiloNodesPerSecond << io::Color::White << " kilonodes per second" << std::endl;
 			} break;
 			IGNORE_CMD("?")
+			CASE_CMD("test", 0, 0) {
+				runTests();
+			} break;
 			CMD_DEFAULT
 		}
 
