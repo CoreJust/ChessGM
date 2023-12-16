@@ -37,6 +37,7 @@ namespace engine {
 
 	NodesCount g_nodesCount = 0; // Nodes during the current search
 	MoveList g_moveLists[2 * MAX_DEPTH];
+	MoveList g_PVs[2 * MAX_DEPTH];
 
 	Limits g_limits;
 
@@ -68,6 +69,8 @@ namespace engine {
 
 	SearchResult rootSearch(Board& board) {
 		static MoveList moves;
+		static MoveList pv;
+
 		Move lastBest;
 		Value lastResult = -INF;
 		Depth rootDepth = 0;
@@ -82,7 +85,9 @@ namespace engine {
 			Move best;
 			Value result = -INF;
 			u8 legalMoves = 0;
-			for (Move m : moves) {
+
+			pv.clear();
+			for (Move &m : moves) {
 				if (!board.isLegal(m)) {
 					continue;
 				}
@@ -96,6 +101,9 @@ namespace engine {
 				if (tmp > result) {
 					result = tmp;
 					best = m;
+
+					// Copying the PV
+					pv.mergeWith(g_PVs[0], 0);
 				}
 
 				if (g_mustStop) {
@@ -107,9 +115,10 @@ namespace engine {
 				}
 			}
 
-			// Such situation is highly unlikely, but it is possible that we have no legal moves somehow
-			if (legalMoves == 0) {
+			if (legalMoves == 0) { // Such situation is highly unlikely, but it is possible that we have no legal moves somehow
 				return SearchResult { .best = Move::makeNullMove(), .value = Value(board.isInCheck() ? -MATE : Value(0)) };
+			} else if (legalMoves == 1) { // We have a single reply, so no need to search any deeper
+				return SearchResult { .best = best, .value = result };
 			}
 
 			// Check if we reached the soft limit
@@ -132,13 +141,13 @@ namespace engine {
 						io::g_out << " score cp " << result;
 					}
 
-					io::g_out << " pv " << best << std::endl;
+					io::g_out << " pv " << pv.toString(best) << std::endl;
 				} else { // Xboard/Console
 					io::g_out << rootDepth << ' '
 						<< result << ' '
 						<< g_limits.elapsedCentiseconds() << ' '
 						<< g_nodesCount << ' '
-						<< best << std::endl;
+						<< pv.toString(best) << std::endl;
 				}
 			}
 
@@ -177,6 +186,10 @@ namespace engine {
 			}
 		}
 
+		if constexpr (NT == NodeType::PV) {
+			g_PVs[ply].clear();
+		}
+
 		// Check if the game ended in a draw
 		if (board.isDraw(ply)) {
 			return 0;
@@ -211,6 +224,13 @@ namespace engine {
 			// Alpha-Beta Pruning
 			if (tmp > alpha) {
 				alpha = tmp;
+
+				// Updating the PV
+				if constexpr (NT == NodeType::PV) {
+					g_PVs[ply].clear();
+					g_PVs[ply].push(m);
+					g_PVs[ply].mergeWith(g_PVs[ply + 1], 1);
+				}
 			}
 
 			if (alpha >= beta) { // The actual pruning
@@ -244,6 +264,10 @@ namespace engine {
 			if ((g_nodesCount & 0x1fff) == 0) {
 				checkInput();
 			}
+		}
+
+		if constexpr (NT == NodeType::PV) {
+			g_PVs[ply].clear();
 		}
 
 		// Check if the game ended in a draw
@@ -288,7 +312,8 @@ namespace engine {
 
 			if (!isInCheck) { 
 				if (board.byPieceType(PieceType::PAWN) != BitBoard::EMPTY) { // So as not to prune in endgame
-					// Delta pruning
+					///  Delta pruning  ///
+
 					// Idea: if with the value of the captured piece, even with a surplus margin
 					//		 cannot improve the value, than the move is unlikely to improve the alpha as well.
 					// Promotions are not considered here
@@ -297,12 +322,14 @@ namespace engine {
 							m.getMoveType() == MoveType::ENPASSANT ? Piece::PAWN_WHITE : board[m.getTo()]
 						];
 
+						// TODO: swap conditions
 						if (!board.givesCheck(m) && staticEval + capturedValue + DELTA_PRUNING_MARGIN <= alpha) {
 							continue;
 						}
 					}
 
-					// SEE pruning
+					///  SEE pruning  ///
+
 					// Checks if the move can lead to any benefit
 					// If not, than we can likely safely skip it
 					if (board.SEE(m) < 0) {
@@ -323,6 +350,13 @@ namespace engine {
 			// Alpha-Beta Pruning
 			if (tmp > alpha) {
 				alpha = tmp;
+
+				// Updating the PV
+				if constexpr (NT == NodeType::PV) {
+					g_PVs[ply].clear();
+					g_PVs[ply].push(m);
+					g_PVs[ply].mergeWith(g_PVs[ply + 1], 1);
+				}
 			}
 
 			if (alpha >= beta) { // The actual pruning

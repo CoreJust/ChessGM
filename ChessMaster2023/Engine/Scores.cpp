@@ -22,7 +22,9 @@
 #define S(mg, eg) Score(mg, eg)
 
 namespace scores {
-// Pieces' cost
+	Score TEMPO_SCORE = S(20, 5);
+
+	// Pieces' cost
 	Score PIECE_VALUE[PieceType::VALUES_COUNT] = {
 		Z,	// None
 		S(100, 130), // Pawn

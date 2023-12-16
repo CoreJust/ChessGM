@@ -1,5 +1,22 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.2.1  ###
+	* Minor PV update / 16.12.2023
+	
+	* Added the Principal Variation output.
+	* Engine now resigns if:
+		1. It is playing in Xboard mode
+		2. It is playing against a computer/itself
+		3. It is at a disadvantage of 9 pawns in comparison to the initial position
+		
+	* Root search for only depth 1 when there is a single legal move | + ~5 elo
+	* Tempo score for search stabilization | +- ~5 elo
+	
+	* Fixed a bug in the root move ordering: it was not correctly ordered due to
+	  not saving the iteration's search results into the moves' scores | + ~30 elo
+	  
+	* Power: ~1570 elo
+
 ###  Version 0.2  ###
 	* Quiescence search update / 16.12.2023
 
@@ -18,6 +35,8 @@
 	  it uses less time in a move (for quicker testing).
 		
 	* Power: 1540 elo
+
+
 
 ###  Version 0.1.1  ###
 	* Minor improvements / 13.12.2023

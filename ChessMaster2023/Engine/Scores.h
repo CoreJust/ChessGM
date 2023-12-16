@@ -30,6 +30,8 @@ namespace scores {
 
 	extern Value SIMPLIFIED_PIECE_VALUES[Piece::VALUES_COUNT]; // Simplified always positive piece values for SEE
 
+	extern Score TEMPO_SCORE;
+
 	// TODO: implement
 	// Intended to be used for loading/storing the weights
 	class Weights final {

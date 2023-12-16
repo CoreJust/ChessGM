@@ -21,9 +21,11 @@
 #include "Utils/StringUtils.h"
 #include "ChessMasterInfo.h"
 #include "Search.h"
+#include "Eval.h"
 
 namespace engine {
 	time_t g_timeLeft = 0;
+	Value g_initialPositionValue = 0; // The evaluated value of the position the engine began the game from
 
 	///  SOME OF XBOARD COMMANDS HANDLING  ///
 
@@ -63,6 +65,16 @@ namespace engine {
 		SearchResult result = rootSearch(g_board);
 		if (result.best.isNullMove()) {
 			if (xboardCheckForGameOver()) {
+				return;
+			}
+		}
+
+		if (options::g_isComputerOpponent || options::g_isPlayingAgainstSelf) {
+			// The engine is playing against another engine and it is evaluated
+			// that we lost a value equal to ten pawns
+			// Can resign here as well
+			if (result.value + g_initialPositionValue < -scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE] * 10) {
+				io::g_out << "resign" << std::endl;
 				return;
 			}
 		}
@@ -125,7 +137,9 @@ namespace engine {
 				options::g_isIllegalPosition = false;
 				options::g_randomMode = false;
 				options::g_forceMode = false;
+
 				g_limits.makeInfinite(); // Reseting all the limits
+				g_initialPositionValue = 0;
 				newGame();
 				break;
 			CASE_CMD("random", 0, 0) options::g_randomMode = !options::g_randomMode; break;
@@ -168,6 +182,8 @@ namespace engine {
 				} else {
 					options::g_isIllegalPosition = false;
 					options::g_randomMode = false;
+
+					g_initialPositionValue = eval(g_board);
 				} break;
 			CASE_CMD("hint", 0, 0) break; // TODO: implement hinting
 			IGNORE_CMD("bk") // When the user chooses the "Book" option in the menu
@@ -194,7 +210,7 @@ namespace engine {
 			} break;
 			IGNORE_CMD("rating") // Should inform about opponent's and engine's rating
 			IGNORE_CMD("ics") // Should inform about whether the opponent is local or online
-			IGNORE_CMD("computer") // Should inform that the opponent is also an engine
+			CASE_CMD("computer", 0, 0) options::g_isComputerOpponent = true; break;
 			CMD_DEFAULT
 		}
 

@@ -61,6 +61,28 @@ public:
 		return m_data[index];
 	}
 
+	CM_PURE constexpr Move operator[](const u32 index) const noexcept {
+		assert(m_data + index < m_end);
+
+		return m_data[index];
+	}
+
+	// Inserts the contents of the given list into this one starting from <from>
+	INLINE constexpr void mergeWith(const MoveList& other, const u32 from) noexcept {
+		assert(this != &other);
+
+		const u32 to = std::min(MAX_MOVES, from + other.size());
+		if (std::is_constant_evaluated()) {
+			for (u32 i = from, j = 0; i < to; ++i, ++j) {
+				m_data[i] = other[j];
+			}
+		} else {
+			memcpy(m_data + from, other.m_data, (to - from) * sizeof(Move));
+		}
+
+		m_end = m_data + to;
+	}
+
 	INLINE constexpr void push(const Move move) noexcept {
 		assert(m_end < m_data + MAX_MOVES);
 
@@ -88,12 +110,33 @@ public:
 		return m_data;
 	}
 
+	CM_PURE constexpr const Move* begin() const noexcept {
+		return m_data;
+	}
+
 	CM_PURE constexpr Move* end() noexcept {
 		return m_end;
 	}
 
-	CM_PURE constexpr size_t size() const noexcept {
+	CM_PURE constexpr const Move* end() const noexcept {
+		return m_end;
+	}
+
+	CM_PURE constexpr u32 size() const noexcept {
 		return m_end - m_data;
+	}
+
+	// Creates a line of the moves, like: e2e4 c7c5 g1f3...
+	// If the first move is given, the line begins with it
+	CM_PURE std::string toString(const Move first = Move::makeNullMove()) const noexcept {
+		std::string result = first.isNullMove() ? std::string("") : (first.toString() + " ");
+		result.reserve(result.size() + size() * 5);
+
+		for (Move m : *this) {
+			result += m.toString() + " ";
+		}
+
+		return result;
 	}
 };
 

@@ -25,6 +25,7 @@ Value engine::eval(Board& board) {
 
     Material material = board.materialByColor(Color::WHITE) + board.materialByColor(Color::BLACK);
     Value result = score.collapse(material);
+    result *= (-1 + 2 * (board.side() == Color::WHITE));
 
-    return (-1 + 2 * (board.side() == Color::WHITE)) * result;
+    return result + scores::TEMPO_SCORE.collapse(material);
 }

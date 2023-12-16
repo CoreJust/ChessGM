@@ -55,4 +55,8 @@ namespace options {
 
 	// It is set when it is known that the engine's opponent is another version of the engine
 	extern bool g_isPlayingAgainstSelf;
+
+	// It is set when the engine is playing against another engine
+	// In such a case, the engine would resign on sure-to-lose positions
+	extern bool g_isComputerOpponent;
 }
