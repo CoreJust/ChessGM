@@ -28,6 +28,8 @@ namespace scores {
 	extern Score PIECE_VALUE[PieceType::VALUES_COUNT]; // Pieces' cost
 	extern Score PST[Piece::VALUES_COUNT][Square::VALUES_COUNT]; // Piece-square tables
 
+	extern Value SIMPLIFIED_PIECE_VALUES[Piece::VALUES_COUNT]; // Simplified always positive piece values for SEE
+
 	// TODO: implement
 	// Intended to be used for loading/storing the weights
 	class Weights final {

@@ -42,6 +42,9 @@ namespace engine {
 		NodesCount m_nodesLimit = UINT64_MAX;
 
 	public:
+		// Resets all the limits and makes the search infinite
+		void makeInfinite() noexcept;
+
 		// Starts the time limit counting from the moment
 		// Recomputes the limits based on the currently left time
 		void reset(const time_t msLeft = 0) noexcept;

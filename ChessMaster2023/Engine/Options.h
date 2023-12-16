@@ -52,4 +52,7 @@ namespace options {
 	// It is set when the user tries to set an illegal position.
 	// With this, some of the commands would be denied unless a correct position is set.
 	extern bool g_isIllegalPosition;
+
+	// It is set when it is known that the engine's opponent is another version of the engine
+	extern bool g_isPlayingAgainstSelf;
 }

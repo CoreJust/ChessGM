@@ -155,10 +155,21 @@ public:
 	template<Color::Value Side, movegen::GenerationMode Mode, PieceType::Value PT>
 	INLINE constexpr void generatePieceMoves(MoveList& moves, const BitBoard allPieces, const BitBoard trg) const noexcept {
 		static_assert(PT != PieceType::NONE && PT != PieceType::PAWN && PT != PieceType::KING);
+		constexpr Color OpponentSide = Color(Side).getOpposite();
+
+		const BitBoard opponentKingAttacks = Mode == movegen::QUIET_CHECKS
+			? computeAttacksOf(Piece(Side, PT), king(OpponentSide), allPieces)
+			: BitBoard(BitBoard::EMPTY);
 
 		BitBoard pieces = byPiece(Piece(Side, PT));
 		BB_FOR_EACH(sq, pieces) {
 			BitBoard attacks = BitBoard::attacksOf(PT, sq, allPieces).b_and(trg);
+			if constexpr (Mode == movegen::QUIET_CHECKS) {
+				if (!checkBlockers(OpponentSide).test(sq)) {
+					attacks = attacks.b_and(opponentKingAttacks);
+				}
+			}
+
 			while (attacks) {
 				moves.emplace(sq, attacks.pop());
 			}
@@ -192,7 +203,7 @@ public:
 	// Ply is the search ply, 0 by default makes it look for triple repetition
 	CM_PURE bool repetitionDraw(const Depth ply = 0) const noexcept {
 		if (Depth lastRep = state().lastRepetition; lastRep) {
-			return lastRep <= ply
+			return ply
 				? true // True if the position repeated itself during the search
 				: m_states[m_states.size() - lastRep].lastRepetition != 0;
 		}
@@ -228,7 +239,68 @@ public:
 	}
 
 
-	///  CM_PURE METHODS  ///
+	///  DIVERSE METHODS  ///
+
+	// Static Exchange Evaluation
+	Value SEE(const Move m) const noexcept;
+
+	// Returns true if the move is quiet, that is, does not change the material on the board
+	CM_PURE constexpr bool isQuiet(const Move m) const noexcept {
+		switch (m.getMoveType()) {
+			case MoveType::SIMPLE: return m_board[m.getTo()] == Piece::NONE;
+			case MoveType::PROMOTION: return false;
+			case MoveType::ENPASSANT: return false;
+			case MoveType::CASTLE: return true;
+		default: return true;
+		}
+	}
+
+	CM_PURE bool givesCheck(const Move m) const noexcept {
+		const Square from = m.getFrom();
+		const Square to = m.getTo();
+		const Color side = m_board[from].getColor();
+		const Color oppositeSide = side.getOpposite();
+		const Square kingSq = king(oppositeSide);
+
+		const Piece piece = m.getMoveType() != MoveType::PROMOTION
+			? m_board[m.getFrom()]
+			: Piece(side, m.getPromotedPiece());
+
+		// A direct check
+		BitBoard occ = allPieces().b_xor(BitBoard::fromSquare(from));
+		if (computeAttacksOf(piece, to, occ).test(kingSq)) {
+			return true;
+		}
+
+		// A discovered check
+		if (checkBlockers(oppositeSide).test(from)) {
+			return !BitBoard::areAligned(from, to, kingSq) // Moving a piece that blocked a check aside
+				|| m.getMoveType() == MoveType::CASTLE; // If it is a castling and king was blocking the check, than castling would check with a rook
+		}
+
+		// Special cases
+		switch (m.getMoveType()) {
+			case MoveType::SIMPLE: [[fallthrough]];
+			case MoveType::PROMOTION: return false; // No special cases left for these types of move
+			case MoveType::ENPASSANT: {
+				// A check can be discovered with the removed opponent's pawn
+				const Square capturedSq = Square(to.getFile(), from.getRank());
+				if (BitBoard::pseudoAttacks<PieceType::BISHOP>(kingSq).test(capturedSq)) { // Discovered check on a diagonal
+					occ.move(capturedSq, to);
+					return BitBoard::attacksOf(PieceType::BISHOP, kingSq, occ).b_and(bishopsAndQueens(side)) != BitBoard::EMPTY;
+				} else if (kingSq.getRank() == capturedSq.getRank()) { // A horizontal discovered check
+					occ.move(capturedSq, to);
+					return BitBoard::attacksOf(PieceType::ROOK, kingSq, occ).b_and(rooksAndQueens(side)) != BitBoard::EMPTY;
+				}
+
+				return false;
+			} case MoveType::CASTLE: {
+				// While doing a castling, we can give a vertical check with the rook
+				const Square rookTo = Square::makeRelativeSquare(side, to == Square::G1 ? Square::F1 : Square::D1);
+				return rookTo.getFile() == kingSq.getFile() && BitBoard::attacksOf(PieceType::ROOK, kingSq, occ).test(rookTo);
+		} default: return false;
+		}
+	}
 
 	CM_PURE constexpr BitBoard computeAttackersOf(const Color side, const Square sq) const noexcept {
 		return computeAttackersOf(side, sq, allPieces());
@@ -256,6 +328,20 @@ public:
 	// Finds attackers from both sides
 	CM_PURE constexpr BitBoard computeAllAttackersOf(const Square sq, const BitBoard occ) const noexcept {
 		return computeAttackersOf<Color::BLACK>(sq, occ).b_or(computeAttackersOf<Color::WHITE>(sq, occ));
+	}
+
+	// Finds the squares attacked by the given piece
+	CM_PURE constexpr BitBoard computeAttacksOf(const Piece piece, const Square sq, const BitBoard occ) const noexcept {
+		switch (piece.getType()) {
+			case PieceType::NONE: return BitBoard::EMPTY;
+			case PieceType::PAWN: return BitBoard::pawnAttacks(piece.getColor(), sq);
+			case PieceType::KNIGHT: [[fallthrough]];
+			case PieceType::BISHOP: [[fallthrough]];
+			case PieceType::ROOK:	[[fallthrough]];
+			case PieceType::QUEEN:	[[fallthrough]];
+			case PieceType::KING: return BitBoard::attacksOf(piece.getType(), sq, occ);
+		default: return BitBoard::EMPTY;
+		}
 	}
 
 	CM_PURE constexpr BitBoard allPieces() const noexcept {

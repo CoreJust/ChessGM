@@ -8,6 +8,7 @@ The engine is developed as a hobby.
 ## Features
 * Search:
 1) NegaMax with Alpha-Beta
+2) Quiescence search
 
 * Static evaluation:
 1) Material
@@ -17,9 +18,9 @@ The engine is developed as a hobby.
 (This is an early version of engine, so its power is low)
 
 ChessMaster was tested in a tournament against several other engines from CCRL
-with time control 1+1.
+with time control 0:1+1.
 
-Estimated elo: 900 (computed with Bayeselo).
+Estimated elo: 1540 (computed with Bayeselo).
 
 _The engine is expected to reach at least 2100 elo by the first release - such was the
 rating of the original engine of mine._
@@ -46,13 +47,12 @@ The features that are supposed to be implemented by the first release (most of w
 3) History heuristic
 4) Hash table
 5) Internal Iterative Deepening
-6) Quiescence search
-7) Extensions (capture, passed pawn, recapture, check, singular...)
-8) Null move heuristic
-9) Futility pruning
-10) Mate Distance pruning
-11) Late Move Reduction
-12) And some others
+6) Extensions (capture, passed pawn, recapture, check, singular...)
+7) Null move heuristic
+8) Futility pruning
+9) Mate Distance pruning
+10) Late Move Reduction
+11) And some others
 
 * Static evaluation:
 1) Tempo

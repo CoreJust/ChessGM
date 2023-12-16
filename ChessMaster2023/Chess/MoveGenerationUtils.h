@@ -103,6 +103,7 @@ namespace movegen {
 	enum GenerationMode : ufast8 {
 		ALL_MOVES, // Generating all the pseudo-legal moves
 		CAPTURES, // Generating only captures and queen promotions
-		CHECK_EVASIONS // Generating moves while in check
+		CHECK_EVASIONS, // Generating moves while in check
+		QUIET_CHECKS // Non-capturing checks (so as not to generate moves as in captures)
 	};
 }

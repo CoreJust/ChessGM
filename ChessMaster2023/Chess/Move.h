@@ -84,6 +84,10 @@ public:
 		return m_data;
 	}
 
+	INLINE constexpr void setValue(const Value value) noexcept {
+		m_value = value;
+	}
+
 	CM_PURE constexpr Value getValue() const noexcept {
 		return m_value;
 	}

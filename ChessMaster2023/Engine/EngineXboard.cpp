@@ -19,6 +19,7 @@
 #include "Engine.h"
 #include "Utils/CommandHandlingUtils.h"
 #include "Utils/StringUtils.h"
+#include "ChessMasterInfo.h"
 #include "Search.h"
 
 namespace engine {
@@ -123,6 +124,8 @@ namespace engine {
 			CASE_CMD("new", 0, 0)
 				options::g_isIllegalPosition = false;
 				options::g_randomMode = false;
+				options::g_forceMode = false;
+				g_limits.makeInfinite(); // Reseting all the limits
 				newGame();
 				break;
 			CASE_CMD("random", 0, 0) options::g_randomMode = !options::g_randomMode; break;
@@ -186,7 +189,9 @@ namespace engine {
 					xboardAnalyze();
 				} break;
 			IGNORE_CMD("exit")
-			IGNORE_CMD("name") // Should name the opponent
+			CASE_CMD("name", 1, 999) {
+				options::g_isPlayingAgainstSelf = (io::getAllArguments().find(ENGINE_NAME) != std::string_view::npos);
+			} break;
 			IGNORE_CMD("rating") // Should inform about opponent's and engine's rating
 			IGNORE_CMD("ics") // Should inform about whether the opponent is local or online
 			IGNORE_CMD("computer") // Should inform that the opponent is also an engine

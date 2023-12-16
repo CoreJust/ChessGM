@@ -17,6 +17,7 @@
 */
 
 #include <atomic>
+#include <algorithm>
 
 #include "Utils/IO.h"
 #include "Search.h"
@@ -24,6 +25,13 @@
 #include "Engine.h"
 
 namespace engine {
+	// Constants
+
+	constexpr Value DELTA_PRUNING_MARGIN = 200;
+
+	constexpr Depth MAX_QPLY_FOR_CHECKS = 2;
+
+
 	// Global variables
 	std::atomic_bool g_mustStop = false; // Must the search stop?
 
@@ -60,8 +68,8 @@ namespace engine {
 
 	SearchResult rootSearch(Board& board) {
 		static MoveList moves;
-		Move best, lastBest;
-		Value result = -INF, lastResult = -INF;
+		Move lastBest;
+		Value lastResult = -INF;
 		Depth rootDepth = 0;
 
 		// Initializing the search
@@ -71,6 +79,8 @@ namespace engine {
 		// Looking for the best move
 		board.generateMoves(moves);
 		while (!g_limits.isDepthLimitBroken(++rootDepth)) {
+			Move best;
+			Value result = -INF;
 			u8 legalMoves = 0;
 			for (Move m : moves) {
 				if (!board.isLegal(m)) {
@@ -79,16 +89,21 @@ namespace engine {
 
 				++legalMoves;
 				board.makeMove(m);
-				Value tmp = -search<NodeType::PV>(board, -INF, INF, rootDepth - 1, 0);
+				Value tmp = -search<NodeType::PV>(board, -INF, -result, rootDepth - 1, 0);
 				board.unmakeMove(m);
 
-				if (g_mustStop) {
-					return SearchResult { .best = lastBest, .value = lastResult };
-				}
-
+				m.setValue(tmp);
 				if (tmp > result) {
 					result = tmp;
 					best = m;
+				}
+
+				if (g_mustStop) {
+					if (lastBest.isNullMove()) { // In case we haven't finished the first iteration
+						return SearchResult { .best = best, .value = result };
+					} else {
+						return SearchResult { .best = lastBest, .value = lastResult };
+					}
 				}
 			}
 
@@ -129,7 +144,9 @@ namespace engine {
 
 			lastBest = best;
 			lastResult = result;
-			result = -INF;
+
+			// Sorting the moves
+			std::sort(moves.begin(), moves.end(), [](Move a, Move b) -> bool { return a.getValue() < b.getValue(); });
 		}
 
 		return SearchResult { .best = lastBest, .value = lastResult };
@@ -138,6 +155,11 @@ namespace engine {
 	// The general search function
 	template<NodeType NT>
 	Value search(Board& board, Value alpha, Value beta, Depth depth, Depth ply) {
+		// Reached the leaf node (all the checks would be done within qsearch)
+		if (depth <= 0) {
+			return quiescence<NT>(board, alpha, beta, ply, 0);
+		}
+
 		if (g_mustStop) {
 			return alpha;
 		}
@@ -155,27 +177,21 @@ namespace engine {
 			}
 		}
 
-		// Check if we have reached the maximal possible ply
-		if (ply > MAX_DEPTH) {
-			return alpha;
-		}
-
 		// Check if the game ended in a draw
 		if (board.isDraw(ply)) {
 			return 0;
 		}
 
-		// Reached the leaf node
-		if (depth <= 0) {
-			return eval(board);
+		// Check if we have reached the maximal possible ply
+		if (ply > MAX_DEPTH) {
+			return alpha;
 		}
 
 		// The recursive search
-		Value result = alpha;
 		u8 legalMovesCount = 0;
 		MoveList& moves = g_moveLists[ply];
-
 		board.generateMoves(moves);
+
 		for (Move m : moves) {
 			if (!board.isLegal(m)) {
 				continue;
@@ -185,7 +201,7 @@ namespace engine {
 			++g_nodesCount;
 
 			board.makeMove(m);
-			Value tmp = -search<NT>(board, -beta, -result, depth - 1, ply + 1);
+			Value tmp = -search<NT>(board, -beta, -alpha, depth - 1, ply + 1);
 			board.unmakeMove(m);
 
 			if (g_mustStop) {
@@ -193,11 +209,11 @@ namespace engine {
 			}
 
 			// Alpha-Beta Pruning
-			if (tmp > result) {
-				result = tmp;
+			if (tmp > alpha) {
+				alpha = tmp;
 			}
 
-			if (result >= beta) { // The actual pruning
+			if (alpha >= beta) { // The actual pruning
 				break;
 			}
 		}
@@ -208,10 +224,118 @@ namespace engine {
 				: 0; // Stalemate
 		}
 
-		return result;
+		return alpha;
 	}
 
-	template Value search<NodeType::PV>(Board& board, Value alpha, Value beta, Depth depth, Depth ply);
+	template<NodeType NT>
+	Value quiescence(Board& board, Value alpha, Value beta, Depth ply, Depth qply) {
+		if (g_mustStop) {
+			return alpha;
+		}
+
+		// Checking limits and input
+		if ((g_nodesCount & 0x1ff) == 0) {
+			if (g_limits.isHardLimitBroken() || g_limits.isNodesLimitBroken(g_nodesCount)) {
+				g_mustStop = true;
+				return alpha;
+			}
+
+			// Cheching for possible input once in 8192 nodes
+			if ((g_nodesCount & 0x1fff) == 0) {
+				checkInput();
+			}
+		}
+
+		// Check if the game ended in a draw
+		if (board.isDraw(ply)) {
+			return 0;
+		}
+
+		// Check if we have reached the maximal possible ply
+		if (ply > MAX_DEPTH) {
+			return alpha;
+		}
+
+		Value staticEval = eval(board);
+		if (!board.isInCheck()) {
+			// Standing pat
+			if (staticEval >= beta) {
+				return staticEval;
+			}
+
+			if (staticEval > alpha) {
+				alpha = staticEval;
+			}
+		}
+
+		const bool isInCheck = board.isInCheck();
+		u8 legalMovesCount = 0;
+
+		// Move generation
+		MoveList& moves = g_moveLists[ply];
+		board.generateMoves<movegen::CAPTURES>(moves);
+		if (!isInCheck && qply < MAX_QPLY_FOR_CHECKS) {
+			board.generateMoves<movegen::QUIET_CHECKS>(moves);
+		}
+
+		// Iterative search
+		for (Move m : moves) {
+			if (!board.isLegal(m)) {
+				continue;
+			}
+
+			++legalMovesCount;
+
+			if (!isInCheck) { 
+				if (board.byPieceType(PieceType::PAWN) != BitBoard::EMPTY) { // So as not to prune in endgame
+					// Delta pruning
+					// Idea: if with the value of the captured piece, even with a surplus margin
+					//		 cannot improve the value, than the move is unlikely to improve the alpha as well.
+					// Promotions are not considered here
+					if (m.getMoveType() != MoveType::PROMOTION) {
+						Value capturedValue = scores::SIMPLIFIED_PIECE_VALUES[
+							m.getMoveType() == MoveType::ENPASSANT ? Piece::PAWN_WHITE : board[m.getTo()]
+						];
+
+						if (!board.givesCheck(m) && staticEval + capturedValue + DELTA_PRUNING_MARGIN <= alpha) {
+							continue;
+						}
+					}
+
+					// SEE pruning
+					// Checks if the move can lead to any benefit
+					// If not, than we can likely safely skip it
+					if (board.SEE(m) < 0) {
+						continue;
+					}
+				}
+			}
+
+			++g_nodesCount;
+			board.makeMove(m);
+			Value tmp = -quiescence<NT>(board, -beta, -alpha, ply + 1, qply + 1);
+			board.unmakeMove(m);
+
+			if (g_mustStop) {
+				return alpha;
+			}
+
+			// Alpha-Beta Pruning
+			if (tmp > alpha) {
+				alpha = tmp;
+			}
+
+			if (alpha >= beta) { // The actual pruning
+				break;
+			}
+		}
+
+		if (legalMovesCount == 0 && board.isInCheck()) {
+			return -MATE + ply;
+		}
+
+		return alpha;
+	}
 
 	void stopSearching() {
 		g_mustStop = true;

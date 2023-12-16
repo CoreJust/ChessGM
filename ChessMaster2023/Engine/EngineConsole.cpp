@@ -23,7 +23,7 @@
 #include "Utils/StringUtils.h"
 #include "Eval.h"
 #include "Search.h"
-#include "test.h"
+#include "Test.h"
 
 namespace engine {
 	void handleIncorrectCommandConsole(std::string_view cmd, const std::vector<std::string>& args, CommandError err) {
@@ -59,7 +59,7 @@ namespace engine {
 		g_moveHistory.push_back(result.best);
 
 		io::g_out << "Best move: " << io::Color::Blue << result.best << std::endl
-			<< "Value: " << io::Color::Green << result.value << io::Color::White << " cantipawns\n"
+			<< "Value: " << io::Color::Green << result.value << io::Color::White << " centipawns\n"
 			<< g_board << std::endl;
 	}
 
@@ -72,7 +72,7 @@ namespace engine {
 			"\n\tsetfen [fen: FEN] - to reset the board and begin a game from the given position"\
 			"\n\tfen - to print the FEN of the current position"\
 			"\n\tboard/print - to show the current board"\
-			"\n\tmoves - to get the list of possible moves"\
+			"\n\tmoves [optional: all|captures|checks] - to get the list of possible moves"\
 			"\n\tdo [move] - to make a move"\
 			"\n\tundo - to unmake a move"\
 			"\n\trandom - toggles the random mode, where the engine makes more random moves"\
@@ -80,6 +80,7 @@ namespace engine {
 			"\n\tlevel [control: uint] [base time: minutes:seconds] [inc time: seconds] - sets time limits"\
 			"\n\tset_max_nodes [nodes: u64] - sets nodes limit"\
 			"\n\tset_max_depth [depth: u64] - sets depth limit"\
+			"\n\treset_limits - resets all the limits, making the search infinite"\
 			"\n\tgo - resets the force mode and starts the engine's move"\
 			"\n\thistory - to print the moves done during the game"\
 			"\n\teval - returns static evaluation of the current position"\
@@ -120,10 +121,17 @@ namespace engine {
 			CASE_CMD_WITH_VARIANT("board", "print", 0, 0)
 				io::g_out << "Current position:\n" << g_board << std::endl;
 				break;
-			CASE_CMD("moves", 0, 0) {
+			CASE_CMD("moves", 0, 1) {
 				MoveList moves;
 				u32 legalMoves = 0;
-				g_board.generateMoves(moves);
+
+				if (args.size() == 0 || args[0] == "all") {
+					g_board.generateMoves(moves);
+				} else if (args[0] == "captures") {
+					g_board.generateMoves<movegen::CAPTURES>(moves);
+				} else if (args[0] == "checks") {
+					g_board.generateMoves<movegen::QUIET_CHECKS>(moves);
+				}
 
 				io::g_out << "Available moves:" << io::Color::Green;
 				for (auto m : moves) {
@@ -162,6 +170,7 @@ namespace engine {
 			} break;
 			CASE_CMD("set_max_nodes", 1, 1) g_limits.setNodesLimit(str_utils::fromString<u64>(args[0])); break;
 			CASE_CMD("set_max_depth", 1, 1) g_limits.setDepthLimit(str_utils::fromString<u8>(args[0])); break;
+			CASE_CMD("reset_limits", 0, 0) g_limits.makeInfinite(); break;
 			CASE_CMD("go", 0, 0) options::g_forceMode = false; consoleGo(); break;
 			CASE_CMD("history", 0, 0)
 				io::g_out << "History of the moves in the current game (" << g_moveHistory.size() << " moves made):" 
@@ -173,11 +182,11 @@ namespace engine {
 				io::g_out << std::endl;
 				break;
 			CASE_CMD("eval", 0, 0)
-				io::g_out << "Evaluation: " << io::Color::Green << eval(g_board) << " cantipawns" << std::endl;
+				io::g_out << "Evaluation: " << io::Color::Green << eval(g_board) << " centipawns" << std::endl;
 				break;
 			CASE_CMD("search", 1, 1) {
 				Value result = search(g_board, -INF, INF, str_utils::fromString<u8>(args[0]), 0);
-				io::g_out << "Search result: " << io::Color::Green << result << " cantipawns" << std::endl;
+				io::g_out << "Search result: " << io::Color::Green << result << " centipawns" << std::endl;
 			} break;
 			CASE_CMD("perft", 1, 1) {
 				using namespace std::chrono;

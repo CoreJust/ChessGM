@@ -19,10 +19,25 @@
 #include "Limits.h"
 #include <chrono>
 
+#include "Options.h"
+
 namespace engine {
 	time_t timeNow() noexcept {
 		auto _now = std::chrono::steady_clock::now().time_since_epoch();
 		return std::chrono::duration_cast<std::chrono::milliseconds>(_now).count();
+	}
+
+	void Limits::makeInfinite() noexcept {
+		m_softBreak = INT64_MAX;
+		m_hardBreak = INT64_MAX;
+		m_start = timeNow();
+
+		m_timeControlMoves = 0;
+		m_movesMade = 0;
+		m_baseTime = INT32_MAX;
+		m_incTime = INT32_MAX;
+		m_depthLimit = 99;
+		m_nodesLimit = UINT64_MAX;
 	}
 
 	void Limits::reset(const time_t msLeft) noexcept {
@@ -32,15 +47,23 @@ namespace engine {
 		// and some reserve considering that there can be a slight delay
 		// between running out of time and passing the search result on 
 		// to the GUI
-		constexpr time_t DELAY_FIX = 2;
+		constexpr time_t DELAY_FIX = 0; // Not currently used
 
 		m_start = timeNow() - DELAY_FIX;
-		if (m_incTime == 0) {
+		if (m_timeControlMoves && m_baseTime) {
 			computeConventionalTimeLimits(msLeft);
-		} else if (m_timeControlMoves == 0) {
+		} else if (m_baseTime) {
 			computeIncrementalTimeLimits(msLeft);
-		} else {
+		} else if (m_incTime) {
 			computeExactTimePerMove(msLeft);
+		}
+
+		if (options::g_isPlayingAgainstSelf) {
+			const size_t computedSoftLimit = m_softBreak - m_start;
+			const size_t computedHardLimit = m_hardBreak - m_start;
+
+			m_softBreak = m_start + std::max(computedSoftLimit / 10, 100ull);
+			m_hardBreak = m_start + std::max(computedHardLimit / 10, 100ull);
 		}
 	}
 
@@ -53,8 +76,8 @@ namespace engine {
 
 	void Limits::computeConventionalTimeLimits(const time_t msLeft) noexcept {
 		const time_t msPerMove = msLeft
-			? msLeft / (m_timeControlMoves - m_movesMade)
-			: m_baseTime / m_timeControlMoves;
+			? std::min(msLeft / (m_timeControlMoves - m_movesMade) + m_incTime, msLeft)
+			: m_baseTime / m_timeControlMoves + m_incTime;
 
 		m_softBreak = m_start + msPerMove / 2;
 		m_hardBreak = m_start + time_t(msPerMove * 0.9);
@@ -63,8 +86,8 @@ namespace engine {
 	void Limits::computeIncrementalTimeLimits(const time_t msLeft) noexcept {
 		constexpr u32 GAME_LENGTH_FACTOR = 40;
 
-		const time_t msPerMove = msLeft >= m_incTime + m_baseTime / GAME_LENGTH_FACTOR
-			? (msLeft / GAME_LENGTH_FACTOR)
+		time_t msPerMove = msLeft
+			? std::min(m_incTime + (msLeft / GAME_LENGTH_FACTOR), msLeft)
 			: m_incTime + m_baseTime / GAME_LENGTH_FACTOR;
 
 		m_softBreak = m_start + msPerMove / 2;
@@ -73,8 +96,9 @@ namespace engine {
 
 	void Limits::computeExactTimePerMove(const time_t msLeft) noexcept {
 		const time_t msForMove = msLeft ? msLeft : m_incTime;
-		m_softBreak = m_start + time_t(msForMove * 0.88);
-		m_hardBreak = m_start + time_t(msForMove * 0.92);
+
+		m_softBreak = m_start + time_t(msForMove * 0.9);
+		m_hardBreak = m_start + time_t(msForMove * 0.95);
 	}
 
 	void Limits::setTimeLimits(const u32 control, const u32 secondsBase, const u32 secondsInc) {

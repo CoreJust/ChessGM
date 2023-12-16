@@ -151,14 +151,14 @@ Board Board::fromFEN(std::string_view fen, bool& success) {
 	}
 
 	// Fifty rule
-	result.fiftyRule() = str_utils::fromString<u8>(fen.substr(++i), i);
+	result.fiftyRule() = str_utils::fromString<u8>(fen, ++i);
 
 	if (++i >= fen.size()) {
 		return result;
 	}
 
 	// Move count
-	u32 fenMoveCount = str_utils::fromString<u32>(fen.substr(i), i);
+	u32 fenMoveCount = str_utils::fromString<u32>(fen, i);
 	result.moveCount() = (fenMoveCount ? (2 * (fenMoveCount - 1)) : 0) + result.side().getOpposite();
 
 	// Internal intitializing
@@ -424,7 +424,7 @@ void Board::makeMove(const Move m) noexcept {
 	if (Depth ply = std::min<Depth>(st.fiftyRule, st.movesFromNull); ply >= 4) {
 		Depth to = m_states.size() - ply;
 		Hash current = st.hash;
-		for (Depth i = m_states.size() - 4; i >= to; i -= 2) {
+		for (Depth i = m_states.size() - 5; i >= to; i -= 2) {
 			if (m_states[i].hash == current) {
 				st.lastRepetition = m_states.size() - i;
 				break;
@@ -478,7 +478,17 @@ void Board::unmakeMove(const Move m) noexcept  {
 
 template<movegen::GenerationMode Mode>
 void Board::generateMoves(MoveList& moves) const noexcept {
-	if constexpr (Mode == movegen::ALL_MOVES) {
+	if constexpr (Mode == movegen::QUIET_CHECKS) {
+		high_assert(!isInCheck());
+
+		return m_side == Color::WHITE
+			? generateMoves<Color::WHITE, movegen::QUIET_CHECKS>(moves)
+			: generateMoves<Color::BLACK, movegen::QUIET_CHECKS>(moves);
+	}
+
+	moves.clear();
+
+	if constexpr (Mode != movegen::CHECK_EVASIONS) {
 		if (isInCheck()) { // In check we only consider evasions
 			return m_side == Color::WHITE
 				? generateMoves<Color::WHITE, movegen::CHECK_EVASIONS>(moves)
@@ -495,6 +505,7 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 template void Board::generateMoves<movegen::ALL_MOVES>(MoveList& moves) const noexcept;
 template void Board::generateMoves<movegen::CAPTURES>(MoveList& moves) const noexcept;
 template void Board::generateMoves<movegen::CHECK_EVASIONS>(MoveList& moves) const noexcept;
+template void Board::generateMoves<movegen::QUIET_CHECKS>(MoveList& moves) const noexcept;
 
 template<Color::Value Side, movegen::GenerationMode Mode>
 void Board::generateMoves(MoveList& moves) const noexcept {
@@ -511,8 +522,6 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 	constexpr BitBoard Rank3BB = BitBoard::fromRank(Rank::makeRelativeRank(Side, Rank::R3));
 	constexpr BitBoard Rank7BB = BitBoard::fromRank(Rank::makeRelativeRank(Side, Rank::R7));
 
-	moves.clear();
-
 
 	const BitBoard friendlyPieces = m_piecesByColor[Side];
 	const BitBoard enemyPieces = Mode == movegen::CHECK_EVASIONS
@@ -522,28 +531,37 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 	const BitBoard allPieces = this->allPieces();
 	const BitBoard emptySquares = allPieces.b_not();
 	const Square kingSq = king(Side);
+	const Square opponentKingSq = king(OpponentSide);
 
 	const BitBoard trg =
 		Mode == movegen::CAPTURES
 			? enemyPieces // For captures mode, we look only for moves where the to square has an enemy piece on it
 		: Mode == movegen::CHECK_EVASIONS
 			? BitBoard::betweenBits(kingSq, checkGivers().lsb()) // For check evasions we look only for moves that block the check
+		: Mode == movegen::QUIET_CHECKS
+			? allPieces.b_not() // In quiet checks we consider all targets but pieces
 			: friendlyPieces.b_not(); // All the suitable targets in all moves mode
 
 
 	// King
 
 	BitBoard bb = byPiece(Piece(Side, PieceType::KING));
-	BitBoard attacks = BitBoard::attacksOf(PieceType::KING, kingSq, allPieces)
-		.b_and(Mode != movegen::CHECK_EVASIONS ? trg : friendlyPieces.b_not());
+	if (Mode != movegen::QUIET_CHECKS || checkBlockers(OpponentSide).test(kingSq)) {
+		BitBoard attacks = BitBoard::attacksOf(PieceType::KING, kingSq, allPieces)
+			.b_and(Mode != movegen::CHECK_EVASIONS ? trg : friendlyPieces.b_not());
 
-	BB_FOR_EACH(sq, attacks) {
-		moves.emplace(kingSq, sq);
-	}
+		if constexpr (Mode == movegen::QUIET_CHECKS) {
+			attacks = attacks.b_and(BitBoard::pseudoAttacks<PieceType::QUEEN>(opponentKingSq).b_not());
+		}
 
-	if constexpr (Mode == movegen::CHECK_EVASIONS) {
-		if (checkGivers().hasMoreThanOne()) { // Double check
-			return; // No moves but king's can evade double check
+		BB_FOR_EACH(sq, attacks) {
+			moves.emplace(kingSq, sq);
+		}
+
+		if constexpr (Mode == movegen::CHECK_EVASIONS) {
+			if (checkGivers().hasMoreThanOne()) { // Double check
+				return; // No moves but king's can evade double check
+			}
 		}
 	}
 
@@ -555,7 +573,7 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 	const BitBoard nonPromotablePawns = bb.b_xor(promotablePawns);
 
 	// Pawn promotions
-	if (promotablePawns) {
+	if (Mode != movegen::QUIET_CHECKS && promotablePawns) {
 		BitBoard upPromotions = promotablePawns.shift(Up).b_and(emptySquares);
 		BitBoard upLeftPromotions = promotablePawns.shift(UpLeft).b_and(enemyPieces);
 		BitBoard upRightPromotions = promotablePawns.shift(UpRight).b_and(enemyPieces);
@@ -594,7 +612,7 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 	}
 
 	// Pawn captures
-	if (nonPromotablePawns) {
+	if (Mode != movegen::QUIET_CHECKS && nonPromotablePawns) {
 		BitBoard upLeftCaptures = nonPromotablePawns.shift(UpLeft).b_and(enemyPieces);
 		BitBoard upRightCaptures = nonPromotablePawns.shift(UpRight).b_and(enemyPieces);
 
@@ -624,6 +642,12 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 			// In check we consider only moves that can block the check
 			singlePawnPush = singlePawnPush.b_and(trg);
 			doublePawnPush = doublePawnPush.b_and(trg);
+		} else if constexpr (Mode == movegen::QUIET_CHECKS) {
+			const BitBoard pawnToKingAttacks = BitBoard::pawnAttacks(OpponentSide, opponentKingSq);
+			BitBoard pawnsBlockingCheck = checkBlockers(OpponentSide).b_and(BitBoard::fromFile(opponentKingSq.getFile()).b_not());
+
+			singlePawnPush = singlePawnPush.b_and(pawnToKingAttacks.b_or(pawnsBlockingCheck = pawnsBlockingCheck.shift(Up)));
+			doublePawnPush = doublePawnPush.b_and(pawnToKingAttacks.b_or(pawnsBlockingCheck.shift(Up)));
 		}
 
 		BB_FOR_EACH(sq, singlePawnPush) {
@@ -642,7 +666,6 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 	generatePieceMoves<Side, Mode, PieceType::QUEEN>(moves, allPieces, trg);
 
 	// Castlings
-
 	if constexpr (Mode == movegen::ALL_MOVES) {
 		if (Castle::hasCastleRight(state().castleRight, Castle::KING_CASTLE, Side)
 			&& (BitBoard::castlingInternalSquares(Side, Castle::KING_CASTLE) & allPieces) == 0) {
@@ -675,4 +698,157 @@ std::ostream& operator<<(std::ostream& out, const Board& board) noexcept {
 	out << "FEN: " << board.toFEN() << std::endl;
 
 	return out;
+}
+
+Value Board::SEE(const Move m) const noexcept {
+	const Square to = m.getTo();
+	Square from = m.getFrom();
+	BitBoard occ = allPieces();
+	Value result; // Current score
+	Value nextLoss; // The next value to be lost in a capture
+
+	// Preparations
+	switch (m.getMoveType()) {
+		case MoveType::PROMOTION: {
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece(Color::WHITE, m.getPromotedPiece())];
+			result = scores::SIMPLIFIED_PIECE_VALUES[m_board[to]]
+				+ nextLoss - scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE];
+			occ.clear(from);
+		} break;
+		case MoveType::SIMPLE: {
+			result = scores::SIMPLIFIED_PIECE_VALUES[m_board[to]];
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[m_board[from]];
+			occ.clear(from);
+		} break;
+		case MoveType::ENPASSANT: {
+			const Square capturedSq = Square(to.getFile(), from.getRank());
+			result = scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE];
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE];
+			occ.clear(capturedSq);
+			occ.clear(from);
+		} break;
+		case MoveType::CASTLE: return 0; // Do not consider castlings
+	default: return 0;
+	}
+
+	// The actual SEE algorithm starts here
+	Value valuesArr[36] = { result };
+	i32 i = 0;
+
+	Color side = m_side;
+	BitBoard attackers = computeAllAttackersOf(to, occ);
+	BitBoard currentAttackers;
+	i8 modifier = 1;
+
+	while (true) {
+		side = side.getOpposite();
+		attackers = attackers.b_and(occ);
+		currentAttackers = attackers.b_and(byColor(side));
+
+		if (occ.b_and(state().pinners[side.getOpposite()])) {
+			currentAttackers = currentAttackers.b_and(checkBlockers(side).b_not());
+		}
+
+		if (!currentAttackers) {
+			break;
+		}
+
+		modifier = -modifier;
+
+		// Looking for the least valuable attacker
+
+		// Pawns
+		BitBoard b = currentAttackers.b_and(byPiece(Piece(side, PieceType::PAWN)));
+		if (b) { // Capture with a pawn is never a loss
+			result += modifier * nextLoss;
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE];
+			valuesArr[++i] = result;
+
+			// Updating the attackers
+			occ.clear(b.lsb());
+			attackers = attackers.b_or(BitBoard::attacksOf(PieceType::BISHOP, to, occ)
+									   .b_and(bishopsAndQueens(Color::WHITE).b_or(bishopsAndQueens(Color::BLACK))));
+
+			continue;
+		}
+
+		// Knights
+		b = currentAttackers.b_and(byPiece(Piece(side, PieceType::KNIGHT)));
+		if (b) {
+			result += modifier * nextLoss;
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece::KNIGHT_WHITE];
+			valuesArr[++i] = result;
+
+			occ.clear(b.lsb());
+			continue;
+		}
+
+		// Bishops
+		b = currentAttackers.b_and(bishops(side));
+		if (b) {
+			result += modifier * nextLoss;
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece::BISHOP_WHITE];
+			valuesArr[++i] = result;
+
+			// Updating the attackers
+			occ.clear(b.lsb());
+			attackers = attackers.b_or(BitBoard::attacksOf(PieceType::BISHOP, to, occ)
+									   .b_and(bishopsAndQueens(Color::WHITE).b_or(bishopsAndQueens(Color::BLACK))));
+			continue;
+		}
+
+		// Rooks
+		b = currentAttackers.b_and(rooks(side));
+		if (b) {
+			result += modifier * nextLoss;
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece::ROOK_WHITE];
+			valuesArr[++i] = result;
+
+			// Updating the attackers
+			occ.clear(b.lsb());
+			attackers = attackers.b_or(BitBoard::attacksOf(PieceType::ROOK, to, occ)
+									   .b_and(rooksAndQueens(Color::WHITE).b_or(rooksAndQueens(Color::BLACK))));
+			continue;
+		}
+
+		// Queens
+		b = currentAttackers.b_and(queens(side));
+		if (b) {
+			result += modifier * nextLoss;
+			nextLoss = scores::SIMPLIFIED_PIECE_VALUES[Piece::QUEEN_WHITE];
+			valuesArr[++i] = result;
+
+			// Updating the attackers
+			occ.clear(b.lsb());
+			attackers = attackers.b_or(BitBoard::attacksOf(PieceType::BISHOP, to, occ)
+									   .b_and(bishopsAndQueens(Color::WHITE).b_or(bishopsAndQueens(Color::BLACK))))
+				.b_or(BitBoard::attacksOf(PieceType::ROOK, to, occ)
+					  .b_and(rooksAndQueens(Color::WHITE).b_or(rooksAndQueens(Color::BLACK))));
+			continue;
+		}
+
+		// King
+		// This the last we can make a capture with, so no need to continue the loop
+		// We can do this capture only if there are no attackers from the other side
+		if (attackers.b_and(byColor(side.getOpposite())).b_and(occ) == BitBoard::EMPTY) {
+			b = currentAttackers.b_and(byPiece(Piece(side, PieceType::KING)));
+			if (b) {
+				result += modifier * nextLoss;
+			}
+
+			valuesArr[++i] = result;
+		}
+
+		break;
+	}
+
+	for (; i > 0; --i) {
+		if (i & 1) {
+			valuesArr[i - 1] = std::min(valuesArr[i - 1], valuesArr[i]);
+		} else {
+			valuesArr[i - 1] = std::max(valuesArr[i - 1], valuesArr[i]);
+		}
+	}
+
+	return valuesArr[0];
 }

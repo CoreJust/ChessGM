@@ -16,9 +16,10 @@
 *	along with ChessMaster. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "test.h"
+#include "Test.h"
 
 #include <chrono>
+#include <tuple>
 
 #include "Utils/IO.h"
 #include "Chess/BitBoard.h"
@@ -206,6 +207,37 @@ template<> bool test<6>() {
 }
 
 template<> bool test<7>() {
+	constexpr auto testName = "BoardTest(SEE)";
+
+	const std::tuple<std::string, std::string, Value> SEE_TESTS[] = {
+		{ "8/8/5R2/8/8/1kb5/8/2K5 b - - 0 1", "c3f6", scores::SIMPLIFIED_PIECE_VALUES[Piece::ROOK_WHITE] },
+		{ "8/2k5/3b4/4n3/6N1/8/5K2/8 w - - 0 1", "g4e5", 0 },
+		{ "k7/3q4/8/8/3Q4/4K3/8/8 b - - 0 1", "d7d4", 0 },
+		{ "k7/3q4/4n3/8/3Q4/4K3/8/8 b - - 0 1", "d7d4", scores::SIMPLIFIED_PIECE_VALUES[Piece::QUEEN_WHITE] },
+		{ "1k6/5n2/8/4p3/3P4/8/1B6/2K5 w - - 0 1", "d4e5", scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_BLACK] },
+		{ "2r3k1/2r5/2r5/8/8/2R5/2R5/2R3K1 w - - 0 1", "c3c6", scores::SIMPLIFIED_PIECE_VALUES[Piece::ROOK_BLACK] },
+		{ "6k1/7p/8/8/8/8/2Q5/6K1 w - - 0 1", "c2h7", 
+			scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_BLACK] - scores::SIMPLIFIED_PIECE_VALUES[Piece::QUEEN_WHITE] },
+		{ "8/3P4/8/8/8/k7/8/1K6 w - - 0 1", "d7d8r", 
+			scores::SIMPLIFIED_PIECE_VALUES[Piece::ROOK_WHITE] - scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE] },
+		{ "2n5/3P4/8/8/8/k7/8/1K6 w - - 0 1", "d7c8n", 
+			scores::SIMPLIFIED_PIECE_VALUES[Piece::KNIGHT_WHITE] * 2 - scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE] },
+		{ "rnbqkbnr/pp1ppppp/8/8/2pPP3/5P2/PPP3PP/RNBQKBNR b KQkq d3 0 1", "c4d3", 0 },
+	};
+
+	for (const auto& [fen, moveStr, expectedValue] : SEE_TESTS) {
+		bool success;
+		Board board = Board::fromFEN(fen, success);
+		Move m = board.makeMoveFromString(moveStr);
+		Value see = board.SEE(m);
+
+		EXPECT_EQ(see, expectedValue);
+	}
+
+	return true;
+}
+
+template<> bool test<8>() {
 	constexpr auto testName = "BoardTest(perftTest)";
 
 	// Results of the perft function for depth 5
@@ -229,6 +261,7 @@ template<> bool test<7>() {
 	return true;
 }
 
+
 template<u32 Id>
 void runTestsSequence() {
 	using namespace std::chrono;
@@ -249,5 +282,5 @@ void runTestsSequence() {
 }
 
 void runTests() {
-	runTestsSequence<7>();
+	runTestsSequence<8>();
 }

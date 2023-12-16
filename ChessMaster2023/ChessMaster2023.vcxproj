@@ -199,7 +199,7 @@
     <ClCompile Include="Engine\Scores.cpp" />
     <ClCompile Include="Engine\Search.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="test.cpp" />
+    <ClCompile Include="Engine\Test.cpp" />
     <ClCompile Include="Utils\CommandHandlingUtils.cpp" />
     <ClCompile Include="Utils\ConsoleColor.cpp" />
     <ClCompile Include="Utils\IO.cpp" />
@@ -219,7 +219,7 @@
     <ClInclude Include="Engine\Options.h" />
     <ClInclude Include="Engine\Scores.h" />
     <ClInclude Include="Engine\Search.h" />
-    <ClInclude Include="test.h" />
+    <ClInclude Include="Engine\Test.h" />
     <ClInclude Include="Utils\BitUtils.h" />
     <ClInclude Include="Utils\CommandHandlingUtils.h" />
     <ClInclude Include="Utils\ConsoleColor.h" />

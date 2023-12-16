@@ -93,7 +93,16 @@ namespace scores {
 		}
 	};
 
+	Value SIMPLIFIED_PIECE_VALUES[Piece::VALUES_COUNT];
+
 	void initScores() {
+		// Simplified piece values
+		for (Piece piece : Piece::iter()) {
+			const Score score = PIECE_VALUE[piece.getType()];
+			SIMPLIFIED_PIECE_VALUES[piece] = (score.middlegame() + score.endgame()) / 2;
+		}
+
+		// PST
 		Score tmp[32];
 		for (auto pt : PieceType::iter()) {
 			memcpy(tmp, PST[Piece(Color::WHITE, pt)], 32 * sizeof(Score));

@@ -78,6 +78,10 @@ namespace engine {
 	template<NodeType NT = NodeType::PV>
 	Value search(Board& board, Value alpha, Value beta, Depth depth, Depth ply);
 
+	// Quiescence search, looks only for captures/some other critical moves
+	// It allows to solve the problem of search horizon
+	template<NodeType NT = NodeType::PV>
+	Value quiescence(Board& board, Value alpha, Value beta, Depth ply, Depth qply);
 
 	///  AUXILIARY FUNCTIONS  ///
 

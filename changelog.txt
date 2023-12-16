@@ -1,7 +1,27 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.2  ###
+	* Quiescence search update / 16.12.2023
+
+	* Quiescence search (for captures/promotions/chech evasions) | + ~200 elo
+	* SEE pruning in quiescence search | + ~110 elo
+	* Delta pruning in quiescence search | + ~70 elo
+	* Checks in quiescence search | + ~70 elo
+	* Alpha value in the root and moves sorting in the root | + ~70 elo
+	
+	* Fixed bug: incorrect repetition draw compution in search | + ~10 elo
+	* Fixed bug: doing invalid move in very short time control due to
+	  unfinished first iteration of root search | In very short time control + ~90 elo
+	* Fixed bug: inadequate time management in short time controls | + ~70 elo in short time controls
+	
+	* New feature: when playing a match in Xboard against another version of the engine,
+	  it uses less time in a move (for quicker testing).
+		
+	* Power: 1540 elo
+
 ###  Version 0.1.1  ###
-	* Minor improvements.
+	* Minor improvements / 13.12.2023
+	
 	* Added tests and fixed several bugs in move generation and FEN reading.
 	* Slight move doing/undoing optimizations (~4-7% faster)
 	* Reduced Intel-dependence (now should compile for other CPUs).
@@ -10,7 +30,8 @@
 
 
 ###  Version 0.1  ###
-	* The first version of the engine.
+	* The first version of the engine / 12.12.2023
+	
 	* Implemented the Board class using Bit Boards and a number of tricks
 	  related to the board/pieces, some of which were taken from the Stockfish
 	  and some from my old ChessMaster project that I have never published.

@@ -48,14 +48,13 @@ namespace str_utils {
 		}
 
 		T result = 0;
-		for (char ch : str) {
-			if (!isDigit(ch)) {
+		for (; i < str.size(); ++i) {
+			if (!isDigit(str[i])) {
 				return result;
 			}
 
 			result *= 10;
-			result += T(ch - '0');
-			i += 1;
+			result += T(str[i] - '0');
 
 			if (result >= PREVIOUS_VALUE_MAX) {
 				return result;

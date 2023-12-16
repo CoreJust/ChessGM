@@ -27,4 +27,5 @@ namespace options {
 
 	bool g_isThinking = false;
 	bool g_isIllegalPosition = false;
+	bool g_isPlayingAgainstSelf = false;
 }
