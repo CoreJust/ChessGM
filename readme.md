@@ -8,7 +8,15 @@ The engine is developed as a hobby.
 ## Features
 * Search:
 1) NegaMax with Alpha-Beta
-2) Quiescence search
+2) MVV/LVA move ordering
+3) History heuristic
+4) Killer moves
+5) 2-tier transposition table
+
+* Quiescence search:
+1) Captures, promotions, checks and check evasions
+2) SEE pruning
+3) Delta pruning
 
 * Static evaluation:
 1) Material
@@ -21,7 +29,7 @@ The engine is developed as a hobby.
 ChessMaster was tested in a tournament against several other engines from CCRL
 with time control 0:1+1.
 
-Estimated elo: 1570 (computed with Bayeselo).
+Estimated elo: 2030 (computed with Bayeselo).
 
 _The engine is expected to reach at least 2100 elo by the first release - such was the
 rating of the original engine of mine._
@@ -42,7 +50,6 @@ To build with GCC, a Makefile is provided.
 # Roadmap
 The features that are supposed to be implemented by the future versions (most of which were implemented in the old ChessMaster of mine):
 
-* 0.3) Move ordering (SEE, hash tables, history heuristic, killer moves, etc...)
 * 0.4) Pawns update (passed pawns, candidates, pawn structure, pawn blockade, backward pawns, 
 	 double pawns, isolated pawns, fakers?, connected pawns, hanging pawns,
 	 pawn islands, holes, pawn majority, pawn race, weak pawns, dispertion/distotrion...)
@@ -53,7 +60,6 @@ The features that are supposed to be implemented by the future versions (most of
 * 0.7) Miscelaneous small updates:
 * 0.7.0) Separate evaluations for specific endgames
 * 0.7.1) Evaluation for material combinations
-* 0.7.2) Internal Iterative Deepening
 * 0.8) Pieces update (mobility, space, connectivity, center control, trapped pieces...)
 * 0.8.1) Knights and bishops (outposts, bad bishop, fianchetto, color weakness
 * 0.8.2) Rooks and queens (rook on (semi)open file, rook behind a passed, rook on seventh rank,

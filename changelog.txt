@@ -1,5 +1,22 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.3  ###
+	* Move ordering update / 19.12.2023
+	
+	* Captures ordering with MVV/LVA | + ~170 elo
+	* History heuristic | + ~90 elo
+	* Modified success rate formula: (successes + 1) / (tries + 2) | + ~30 elo
+	* History values division by 8 instead of clearing before another root search | + ~35 elo
+	
+	* The latter is mostly applicable to short time controls
+	
+	* Transposition table | + ~100 elo
+	* Two-tier transposition table scheme | + ~35 elo
+	* Killer moves | + ~15 elo
+	
+	* Power: 2030 elo
+
+
 ###  Version 0.2.1  ###
 	* Minor PV update / 16.12.2023
 	

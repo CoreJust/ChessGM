@@ -102,6 +102,11 @@ public:
 		::new(m_end++) Move(from, to, MT, promotedPiece);
 	}
 
+	INLINE void pop() noexcept {
+		assert(m_end > m_data);
+		--m_end;
+	}
+
 	INLINE constexpr void clear() noexcept {
 		m_end = m_data;
 	}

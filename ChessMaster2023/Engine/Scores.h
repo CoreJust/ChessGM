@@ -25,6 +25,7 @@
 */
 
 namespace scores {
+	// Scores
 	extern Score PIECE_VALUE[PieceType::VALUES_COUNT]; // Pieces' cost
 	extern Score PST[Piece::VALUES_COUNT][Square::VALUES_COUNT]; // Piece-square tables
 
@@ -39,4 +40,32 @@ namespace scores {
 	};
 
 	void initScores();
+}
+
+// These are some common things that are convenient to put in Scores.h, although they
+// do not logically belong here
+namespace engine {
+	// Some common constants
+	constexpr Depth MAX_DEPTH = 99;
+
+	constexpr Value INF = 31000;
+	constexpr Value MATE = 30000;
+	constexpr Value SURE_WIN = 20000; // A value that cannot be reached with normal evaluation
+
+
+	///  AUXILIARY FUNCTIONS  ///
+
+	CM_PURE constexpr bool isMateValue(const Value value) noexcept {
+		return (value > MATE - MAX_DEPTH * 2 && value <= MATE) || (value < MAX_DEPTH * 2 - MATE && value >= -MATE);
+	}
+
+	// Moves before the mate
+	CM_PURE constexpr Depth givingMateIn(const Value value) noexcept {
+		return (MATE + 2 - value) / 2;
+	}
+
+	// Moves before the mate
+	CM_PURE constexpr Depth gettingMatedIn(const Value value) noexcept {
+		return (value + MATE + 1) / 2;
+	}
 }

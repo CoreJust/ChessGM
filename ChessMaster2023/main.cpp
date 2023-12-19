@@ -20,6 +20,7 @@
 #include "Chess/BitBoard.h"
 #include "Engine/Scores.h"
 #include "Engine/Engine.h"
+#include "Engine/TranspositionTable.h"
 
 /*
 *	main.cpp contains the main function.
@@ -33,11 +34,14 @@
 *		2) Factors beside material in game stage evaluation (for score interpolation)
 *		   e.g. pawns advance
 * 
+*	Canceled ideas (were not useful in the version they were expected to be added in):
+*		Countermove Table, SEE in move ordering, Internal Iterative Deepening, Mate Killers
+* 
 *	TODO by future versions (general plans, features to try):
-*		0.3) Move ordering (SEE, hash tables, history heuristic, killer moves, etc...)
 *		0.4) Pawns update (passed pawns, candidates, pawn structure, pawn blockade, backward pawns, 
 *						   double pawns, isolated pawns, fakers?, connected pawns, hanging pawns,
-*						   pawn islands, holes, pawn majority, pawn race, weak pawns, dispertion/distotrion...)
+*						   pawn islands, holes, pawn majority, pawn race, weak pawns, dispertion/distotrion,
+*						   pawn hash table...)
 *		0.5) Extensions (single move extension, check extension, capture/recapture extension,
 *						 passed pawn extension, PV extension, singular extension...)
 *		0.6) Prunings and reductions (futility pruning, nullmove pruning, razoring, LMR, aspiration window,
@@ -45,7 +49,6 @@
 *		0.7) Miscelaneous small updates:
 *		0.7.0) Separate evaluations for specific endgames
 *		0.7.1) Evaluation for material combinations
-*		0.7.2) Internal Iterative Deepening
 *		0.8) Pieces update (mobility, space, connectivity, center control, trapped pieces...)
 *		0.8.1) Knights and bishops (outposts, bad bishop, fianchetto, color weakness
 *		0.8.2) Rooks and queens (rook on (semi)open file, rook behind a passed, rook on seventh rank,
@@ -73,11 +76,13 @@
 int main() {
 	BitBoard::init();
 	scores::initScores();
+	engine::TranspositionTable::init();
 	io::Output::init();
 	io::init();
 
 	engine::run(io::getMode());
 	
 	io::Output::destroy();
+	engine::TranspositionTable::destroy();
 	return 0;
 }

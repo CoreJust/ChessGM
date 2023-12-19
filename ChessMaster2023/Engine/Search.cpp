@@ -16,13 +16,16 @@
 *	along with ChessMaster. If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "Search.h"
+#include <utility>
 #include <atomic>
 #include <algorithm>
 
 #include "Utils/IO.h"
-#include "Search.h"
 #include "Eval.h"
 #include "Engine.h"
+#include "MovePicker.h"
+#include "TranspositionTable.h"
 
 namespace engine {
 	// Constants
@@ -36,8 +39,10 @@ namespace engine {
 	std::atomic_bool g_mustStop = false; // Must the search stop?
 
 	NodesCount g_nodesCount = 0; // Nodes during the current search
+	SearchStack g_searchStacks[2 * MAX_DEPTH + 2];
 	MoveList g_moveLists[2 * MAX_DEPTH];
-	MoveList g_PVs[2 * MAX_DEPTH];
+	MoveList _g_PVs[2 * MAX_DEPTH + 1];
+	MoveList* g_PVs = _g_PVs + 1; // So as to access the ply = -1 (for root moves)
 
 	Limits g_limits;
 
@@ -69,7 +74,6 @@ namespace engine {
 
 	SearchResult rootSearch(Board& board) {
 		static MoveList moves;
-		static MoveList pv;
 
 		Move lastBest;
 		Value lastResult = -INF;
@@ -79,6 +83,11 @@ namespace engine {
 		g_mustStop = false;
 		g_nodesCount = 0;
 
+		MovePicker::resetHistoryTables();
+		TranspositionTable::setRootAge(board.moveCount());
+
+		memset(g_searchStacks, 0, sizeof(g_searchStacks));
+
 		// Looking for the best move
 		board.generateMoves(moves);
 		while (!g_limits.isDepthLimitBroken(++rootDepth)) {
@@ -86,7 +95,7 @@ namespace engine {
 			Value result = -INF;
 			u8 legalMoves = 0;
 
-			pv.clear();
+			g_PVs[-1].clear();
 			for (Move &m : moves) {
 				if (!board.isLegal(m)) {
 					continue;
@@ -103,7 +112,7 @@ namespace engine {
 					best = m;
 
 					// Copying the PV
-					pv.mergeWith(g_PVs[0], 0);
+					g_PVs[-1].mergeWith(g_PVs[0], 0);
 				}
 
 				if (g_mustStop) {
@@ -141,13 +150,13 @@ namespace engine {
 						io::g_out << " score cp " << result;
 					}
 
-					io::g_out << " pv " << pv.toString(best) << std::endl;
+					io::g_out << " pv " << g_PVs[-1].toString(best) << std::endl;
 				} else { // Xboard/Console
 					io::g_out << rootDepth << ' '
 						<< result << ' '
 						<< g_limits.elapsedCentiseconds() << ' '
 						<< g_nodesCount << ' '
-						<< pv.toString(best) << std::endl;
+						<< g_PVs[-1].toString(best) << std::endl;
 				}
 			}
 
@@ -200,14 +209,63 @@ namespace engine {
 			return alpha;
 		}
 
-		// The recursive search
+
+		///  TRANSPOSITION TABLE  ///
+
+		TableEntry* entry = TranspositionTable::probe(board.computeHash());
+		Move tableMove = Move::makeNullMove();
+		if (entry != nullptr) { // Current position was found
+			// Check if it is possible to just return the value from the table
+			if (entry->depth >= depth && ply && (entry->isPvNode() || NT != NodeType::PV)) {
+				Value value = entry->value;
+				if (isMateValue(value)) { // Fix the mate distance
+					if (value > MATE - 2 * MAX_DEPTH) {
+						value -= ply;
+					} else if (value < -MATE + 2 * MAX_DEPTH) {
+						value += ply;
+					}
+				}
+
+				switch (entry->getBoundType()) {
+					case EntryType::EXACT: return value;
+					case EntryType::ALPHA: 
+						if (value <= alpha) {
+							return alpha;
+						} break;
+					case EntryType::BETA:
+						if (value >= beta) {
+							return beta;
+						} break;
+				default: break;
+				}
+			}
+
+			tableMove = Move::fromData(entry->move);
+		}
+
+
+		///  RECURSIVE SEARCH  ///
+
 		u8 legalMovesCount = 0;
+		EntryType entryType = EntryType::ALPHA;
+		Move bestMove = Move::makeNullMove();
+
+		SearchStack* ss = &g_searchStacks[ply];
+		ss[2].firstKiller = ss[2].secondKiller = Move::makeNullMove();
+
 		MoveList& moves = g_moveLists[ply];
 		board.generateMoves(moves);
 
-		for (Move m : moves) {
+		MovePicker picker(board, moves, ply, ss, tableMove);
+		while (picker.hasMore()) {
+			const Move m = picker.pick();
 			if (!board.isLegal(m)) {
 				continue;
+			}
+
+			const bool isQuiet = board.isQuiet(m);
+			if (isQuiet && !board.isInCheck()) { // Updating the history
+				MovePicker::addHistoryTry(board, m, depth);
 			}
 
 			++legalMovesCount;
@@ -221,9 +279,13 @@ namespace engine {
 				return alpha;
 			}
 
-			// Alpha-Beta Pruning
+
+			///  ALPHA-BETA PRUNING  ///
+
 			if (tmp > alpha) {
 				alpha = tmp;
+				entryType = EntryType::EXACT;
+				bestMove = m;
 
 				// Updating the PV
 				if constexpr (NT == NodeType::PV) {
@@ -234,15 +296,34 @@ namespace engine {
 			}
 
 			if (alpha >= beta) { // The actual pruning
+				if (isQuiet && !board.isInCheck()) { // Updating the history
+					MovePicker::addHistorySuccess(board, m, depth);
+					if (ss->firstKiller.getData() != m.getData()) { // Uodating killers
+						ss->secondKiller = std::exchange(ss->firstKiller, m);
+					}
+				}
+
+				entryType = EntryType::BETA;
 				break;
 			}
 		}
 
 		if (legalMovesCount == 0) {
-			return board.isInCheck() 
+			alpha = board.isInCheck() 
 				? -MATE + ply // Mate
 				: 0; // Stalemate
 		}
+
+		// Saving the results in the transposition table
+		TranspositionTable::tryRecord(
+			EntryType(u8(entryType) | u8(NT)), 
+			board.computeHash(), 
+			bestMove.getData(), 
+			alpha, 
+			board.moveCount(), 
+			depth,
+			ply
+		);
 
 		return alpha;
 	}
@@ -302,8 +383,11 @@ namespace engine {
 			board.generateMoves<movegen::QUIET_CHECKS>(moves);
 		}
 
+		MovePicker picker(board, moves, ply);
+
 		// Iterative search
-		for (Move m : moves) {
+		while (picker.hasMore()) {
+			const Move m = picker.pick();
 			if (!board.isLegal(m)) {
 				continue;
 			}
@@ -322,8 +406,7 @@ namespace engine {
 							m.getMoveType() == MoveType::ENPASSANT ? Piece::PAWN_WHITE : board[m.getTo()]
 						];
 
-						// TODO: swap conditions
-						if (!board.givesCheck(m) && staticEval + capturedValue + DELTA_PRUNING_MARGIN <= alpha) {
+						if (staticEval + capturedValue + DELTA_PRUNING_MARGIN <= alpha && !board.givesCheck(m)) {
 							continue;
 						}
 					}
@@ -369,6 +452,10 @@ namespace engine {
 		}
 
 		return alpha;
+	}
+
+	void initSearch() {
+		MovePicker::init();
 	}
 
 	void stopSearching() {

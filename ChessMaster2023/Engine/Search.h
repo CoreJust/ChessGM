@@ -27,43 +27,32 @@
 *	Currently implemented methods:
 *		1) NegaMax - the basic search algorithm
 *		2) AlphaBeta Pruning - the basic, failproof pruning algorithm
+*		3) Quiescence search for captures/promotions/check evasions/some checks
+*		4) SEE pruning in qiescence
+*		5) Delta pruning in quiescence
+*		6) 2-tier transposition table
+*		7) MVV/LVA non-quiets sort
+*		8) History heuristic
+*		9) Killer moves
 */
 
 namespace engine {
 	enum class NodeType : ufast8 {
-		PV = 0,
-		NON_PV
+		NON_PV = 0,
+		PV
 	};
 
-	struct SearchResult {
+	struct SearchResult final {
 		Move best;
 		Value value;
 	};
 
-	// Some constants
-	constexpr Depth MAX_DEPTH = 99;
-
-	constexpr Value INF = 31000;
-	constexpr Value MATE = 30000;
+	struct SearchStack final {
+		Move firstKiller;
+		Move secondKiller;
+	};
 
 	extern Limits g_limits;
-
-
-	///  AUXILIARY FUNCTIONS  ///
-
-	CM_PURE constexpr bool isMateValue(const Value value) noexcept {
-		return value > MATE - MAX_DEPTH * 2 || value < MAX_DEPTH * 2 - MATE;
-	}
-
-	// Moves before the mate
-	CM_PURE constexpr Depth givingMateIn(const Value value) noexcept {
-		return (MATE + 2 - value) / 2;
-	}
-
-	// Moves before the mate
-	CM_PURE constexpr Depth gettingMatedIn(const Value value) noexcept {
-		return (value + MATE + 1) / 2;
-	}
 
 
 	///  SEARCH FUNCTIONS  ///
@@ -84,6 +73,9 @@ namespace engine {
 	Value quiescence(Board& board, Value alpha, Value beta, Depth ply, Depth qply);
 
 	///  AUXILIARY FUNCTIONS  ///
+
+	// Initialization before a new game
+	void initSearch();
 
 	// When called - stops all searches
 	// Expected to be used when a command was given to stop thinking

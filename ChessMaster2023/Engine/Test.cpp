@@ -49,7 +49,7 @@ bool test();
 template<class T>
 u32 countValuesOfType() {
 	u32 result = 0;
-	for (T t : T::iter()) {
+	for ([[maybe_unused]] T t : T::iter()) {
 		++result;
 	}
 

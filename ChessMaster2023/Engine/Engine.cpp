@@ -17,6 +17,7 @@
 */
 
 #include "Engine.h"
+#include "Search.h"
 
 namespace engine {
 	Board g_board;
@@ -68,6 +69,8 @@ namespace engine {
 		bool success;
 		g_board = Board::fromFEN(fen, success);
 		g_moveHistory.clear();
+
+		initSearch();
 
 		if (!success) {
 			g_errorMessage = fen;

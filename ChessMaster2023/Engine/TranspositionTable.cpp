@@ -16,12 +16,27 @@
 *	along with ChessMaster. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "TranspositionTable.h"
+#include <cstring>
 
-/*
-*	ChessMasterInfo.h contains several variables with some information on the engine.
-*/
+namespace engine {
+	TableEntryCluster* TranspositionTable::s_table = nullptr;
+	uint32_t TranspositionTable::s_tableSize = 0;
+	u16 TranspositionTable::s_rootAge = 0;
 
-constexpr char ENGINE_NAME[] = "ChessMaster";
-constexpr char ENGINE_VERSION[] = "0.3";
-constexpr char AUTHOR_NAME[] = "Ilyin Yegor";
+	void TranspositionTable::init() {
+		s_table = reinterpret_cast<TableEntryCluster*>(malloc(DEFAULT_TABLE_SIZE));
+		assert(s_table != nullptr);
+
+		memset(s_table, 0, DEFAULT_TABLE_SIZE);
+		s_tableSize = DEFAULT_TABLE_SIZE / sizeof(TableEntryCluster);
+	}
+
+	void TranspositionTable::destroy() { 
+		if (s_table) {
+			free(s_table);
+			s_table = nullptr;
+			s_tableSize = 0;
+		}
+	}
+}

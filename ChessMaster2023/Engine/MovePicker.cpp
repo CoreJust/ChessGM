@@ -16,12 +16,14 @@
 *	along with ChessMaster. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "MovePicker.h"
 
-/*
-*	ChessMasterInfo.h contains several variables with some information on the engine.
-*/
+namespace engine {
+	uint32_t s_historyTries[Piece::VALUES_COUNT][Square::VALUES_COUNT];
+	uint32_t s_historySuccesses[Piece::VALUES_COUNT][Square::VALUES_COUNT];
 
-constexpr char ENGINE_NAME[] = "ChessMaster";
-constexpr char ENGINE_VERSION[] = "0.3";
-constexpr char AUTHOR_NAME[] = "Ilyin Yegor";
+	SearchStack MovePicker::s_noSS { 
+		.firstKiller = Move::makeNullMove(), 
+		.secondKiller = Move::makeNullMove() 
+	};
+}

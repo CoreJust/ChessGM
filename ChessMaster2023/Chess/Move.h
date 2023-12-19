@@ -76,6 +76,13 @@ public:
 		return Move();
 	}
 
+	CM_PURE constexpr static Move fromData(const u16 data) noexcept {
+		Move result = makeNullMove();
+		result.m_data = data;
+
+		return result;
+	}
+
 	CM_PURE constexpr bool isNullMove() const noexcept {
 		return m_data == 0;
 	}

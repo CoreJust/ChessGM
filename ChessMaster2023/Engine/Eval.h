@@ -25,8 +25,7 @@
 *	Currently implemented evaluation methods:
 *		1) Material - simply count the material on the board
 *		2) Piece-Square Tables - evaluation based on the position of a piece on the board
-* 
-*		// Material and PST are evaluated incrementally during making/unmaking a move
+*		3) Tempo
 */
 
 namespace engine {
