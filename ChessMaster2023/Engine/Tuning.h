@@ -20,24 +20,28 @@
 #include "Chess/Board.h"
 
 /*
-*	Eval(.h/.cpp) contains the functions for static position evaluation.
+*	Tuning(.h/.cpp) contains the functions to tune the evaluation function' weights.
 * 
-*	Currently implemented evaluation methods:
-*		1) Material - simply count the material on the board
-*		2) Piece-Square Tables - evaluation based on the position of a piece on the board
-*		3) Tempo
-* 
-*		4) Defended pawn
-*		5) Isolated pawn
-*		6) Double pawn
-*		7) Backward pawn
-*		8) Passed pawn
-*		9) Rook behind passed
-*		10) Minor blocking a passed
-*		11) Pawn islands
-*		12) Pawn distortion
+*	Currently it has no automated tuning.
 */
 
 namespace engine {
-	Value eval(Board& board);
+	class Tuning final {
+	public:
+		// A single position from a file
+		struct Position {
+			std::string fen;
+			float result; // Either of 0.0, 0.5, or 1.0
+		};
+
+	private:
+		std::vector<Position> m_positions;
+
+	public:
+		// Loads an epd file with: fen, res (result)
+		void loadPositions(const std::string& fileName);
+
+		// Computes the mean error with the current evaluation function
+		double computeErr();
+	};
 }

@@ -108,6 +108,10 @@ public:
 		return Score(m_asU32 - other.m_asU32);
 	}
 
+	CM_PURE constexpr Score operator*(const i32 value) const noexcept {
+		return Score(m_middlegameValue * value, m_endgameValue * value);
+	}
+
 	INLINE constexpr Score& operator+=(const Score other) noexcept {
 		m_asU32 += other.m_asU32;
 		return *this;

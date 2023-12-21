@@ -17,15 +17,58 @@
 */
 
 #include "Eval.h"
+#include "PawnHashTable.h"
 
-Value engine::eval(Board& board) {
-    Score score = board.scoreByColor(Color::WHITE) - board.scoreByColor(Color::BLACK);
+namespace engine {
+// Evaluation by side
+	template<Color::Value Side>
+	CM_PURE Score evalSide(Board& board) {
+		constexpr Color::Value OppositeSide = Color(Side).getOpposite().value();
+		constexpr Direction::Value Up = Direction::makeRelativeDirection(Side, Direction::UP).value();
+		constexpr Direction::Value Down = Direction::makeRelativeDirection(Side, Direction::DOWN).value();
+		constexpr Rank Rank2 = Rank::makeRelativeRank(Side, Rank::R2);
+		constexpr BitBoard BBRank2 = BitBoard::fromRank(Rank2);
 
-    ///  RESULTS  ///
+		Score result = board.scoreByColor(Side);
+		const BitBoard occ = board.allPieces();
 
-    Material material = board.materialByColor(Color::WHITE) + board.materialByColor(Color::BLACK);
-    Value result = score.collapse(material);
-    result *= (-1 + 2 * (board.side() == Color::WHITE));
 
-    return result + scores::TEMPO_SCORE.collapse(material);
+		///  PAWNS   ///
+
+		const PawnHashEntry& entry = PawnHashTable::getOrScanPHE(board);
+		
+		// Everything related purely to pawns is pre-evaluated
+		result += entry.pawnEvaluation[Side];
+
+		// Passed
+		BitBoard pieces = entry.passed.b_and(entry.pawns[Side]);
+		BB_FOR_EACH(sq, pieces) {
+			// Rook behind a passed
+			if (BitBoard rooksBehind = board.byPiece(Piece(Side, PieceType::ROOK)).b_and(BitBoard::directionBits<Down>(sq)); rooksBehind) {
+				Square rookSq = Side == Color::WHITE ? rooksBehind.msb() : rooksBehind.lsb();
+				if (occ.b_and(BitBoard::betweenBits(sq, rookSq)) == BitBoard::EMPTY) { // Nothing between the rook and the passed
+					result += scores::ROOK_BEHIND_PASSED_PAWN;
+				}
+			}
+
+			// Blocked passed
+			if (board[sq.shift(Up)] == Piece(OppositeSide, PieceType::KNIGHT) || board[sq.shift(Up)] == Piece(OppositeSide, PieceType::BISHOP)) {
+				result += scores::MINOR_PASSED_BLOCKED;
+			}
+		}
+
+		return result;
+	}
+
+	Value eval(Board& board) {
+		Score score = evalSide<Color::WHITE>(board) - evalSide<Color::BLACK>(board);
+
+		///  RESULTS  ///
+
+		Material material = board.materialByColor(Color::WHITE) + board.materialByColor(Color::BLACK);
+		Value result = score.collapse(material);
+		result *= (-1 + 2 * (board.side() == Color::WHITE));
+
+		return result + scores::TEMPO_SCORE.collapse(material);
+	}
 }

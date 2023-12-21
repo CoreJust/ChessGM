@@ -11,3 +11,5 @@ x86/
 *.hint
 *.editorconfig
 *.o
+*.fen
+ChessMaster2023/log.txt

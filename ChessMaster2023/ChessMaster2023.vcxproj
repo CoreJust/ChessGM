@@ -197,9 +197,11 @@
     <ClCompile Include="Engine\Limits.cpp" />
     <ClCompile Include="Engine\MovePicker.cpp" />
     <ClCompile Include="Engine\Options.cpp" />
+    <ClCompile Include="Engine\PawnHashTable.cpp" />
     <ClCompile Include="Engine\Scores.cpp" />
     <ClCompile Include="Engine\Search.cpp" />
     <ClCompile Include="Engine\TranspositionTable.cpp" />
+    <ClCompile Include="Engine\Tuning.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Engine\Test.cpp" />
     <ClCompile Include="Utils\CommandHandlingUtils.cpp" />
@@ -220,10 +222,12 @@
     <ClInclude Include="Engine\Limits.h" />
     <ClInclude Include="Engine\MovePicker.h" />
     <ClInclude Include="Engine\Options.h" />
+    <ClInclude Include="Engine\PawnHashTable.h" />
     <ClInclude Include="Engine\Scores.h" />
     <ClInclude Include="Engine\Search.h" />
     <ClInclude Include="Engine\Test.h" />
     <ClInclude Include="Engine\TranspositionTable.h" />
+    <ClInclude Include="Engine\Tuning.h" />
     <ClInclude Include="Utils\BitUtils.h" />
     <ClInclude Include="Utils\CommandHandlingUtils.h" />
     <ClInclude Include="Utils\ConsoleColor.h" />

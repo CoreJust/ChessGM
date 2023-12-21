@@ -26,6 +26,17 @@
 
 namespace scores {
 	// Scores
+	extern Score PAWN_ISLANDS[5];
+	extern Score DEFENDED_PAWN[Rank::VALUES_COUNT];
+	extern Score ISOLATED_PAWN;
+	extern Score BACKWARD_PAWN;
+	extern Score DOUBLE_PAWN;
+	extern Score PAWN_DISTORTION;
+
+	extern Score PASSED_PAWN[Rank::VALUES_COUNT];
+	extern Score ROOK_BEHIND_PASSED_PAWN;
+	extern Score MINOR_PASSED_BLOCKED;
+
 	extern Score PIECE_VALUE[PieceType::VALUES_COUNT]; // Pieces' cost
 	extern Score PST[Piece::VALUES_COUNT][Square::VALUES_COUNT]; // Piece-square tables
 

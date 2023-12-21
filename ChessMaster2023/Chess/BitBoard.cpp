@@ -24,6 +24,8 @@ u64 BitBoard::s_directionBits[Square::VALUES_COUNT][Direction::VALUES_COUNT];
 u64 BitBoard::s_adjacentFiles[File::VALUES_COUNT];
 u64 BitBoard::s_betweenBits[Square::VALUES_COUNT][Square::VALUES_COUNT];
 u64 BitBoard::s_alignedBits[Square::VALUES_COUNT][Square::VALUES_COUNT];
+u64 BitBoard::s_threeFilesForward[Color::VALUES_COUNT][Square::VALUES_COUNT];
+u64 BitBoard::s_adjacentFilesForward[Color::VALUES_COUNT][Square::VALUES_COUNT];
 u64 BitBoard::s_pawnAttacks[Color::VALUES_COUNT][Square::VALUES_COUNT];
 u64 BitBoard::s_pieceAttacks[PieceType::VALUES_COUNT][Square::VALUES_COUNT];
 u64 BitBoard::s_castlingInternalSquares[Color::VALUES_COUNT][Castle::VALUES_COUNT];
@@ -42,6 +44,7 @@ void BitBoard::init() noexcept {
 	memset(s_adjacentFiles, 0, sizeof(s_adjacentFiles));
 	memset(s_betweenBits, 0, sizeof(s_betweenBits));
 	memset(s_alignedBits, 0, sizeof(s_alignedBits));
+	memset(s_threeFilesForward, 0, sizeof(s_threeFilesForward));
 	memset(s_pawnAttacks, 0, sizeof(s_pawnAttacks));
 	memset(s_pieceAttacks, 0, sizeof(s_pieceAttacks));
 	memset(s_castlingInternalSquares, 0, sizeof(s_castlingInternalSquares));
@@ -52,7 +55,7 @@ void BitBoard::init() noexcept {
 	initMagicBitBoards(PieceType::ROOK, s_rookTable, s_rookMagic);
 	initMagicBitBoards(PieceType::BISHOP, s_bishopTable, s_bishopMagic);
 
-	for (auto i : Square::iter()) {
+	for (Square i : Square::iter()) {
 		for (i32 j = i + 8; j < 64; j += 8) s_directionBits[i][Direction::UP] |= (1ull << j);
 		for (i32 j = i - 8; j >= 0; j -= 8) s_directionBits[i][Direction::DOWN] |= (1ull << j);
 		for (i32 j = i - 1; (j & 7) < 7; j--) s_directionBits[i][Direction::LEFT] |= (1ull << j);
@@ -62,18 +65,31 @@ void BitBoard::init() noexcept {
 		for (i32 j = i - 7; j >= 0 && (j & 7) > 0; j -= 7) s_directionBits[i][Direction::DOWNRIGHT] |= (1ull << j);
 		for (i32 j = i - 9; j >= 0 && (j & 7) < 7; j -= 9) s_directionBits[i][Direction::DOWNLEFT] |= (1ull << j);
 		for (i32 j = i + 7; j < 64 && (j & 7) < 7; j += 7) s_directionBits[i][Direction::UPLEFT] |= (1ull << j);
+
+		s_threeFilesForward[Color::WHITE][i] |= s_directionBits[i][Direction::UP];
+		s_threeFilesForward[Color::BLACK][i] |= s_directionBits[i][Direction::DOWN];
+		if (i.getFile() != File::A) {
+			s_threeFilesForward[Color::WHITE][i] |= s_directionBits[i.shift(Direction::LEFT)][Direction::UP];
+			s_threeFilesForward[Color::BLACK][i] |= s_directionBits[i.shift(Direction::LEFT)][Direction::DOWN];
+		} if (i.getFile() != File::H) {
+			s_threeFilesForward[Color::WHITE][i] |= s_directionBits[i.shift(Direction::RIGHT)][Direction::UP];
+			s_threeFilesForward[Color::BLACK][i] |= s_directionBits[i.shift(Direction::RIGHT)][Direction::DOWN];
+		}
 	}
 
-	for (auto file : File::iter()) {
+	for (File file : File::iter()) {
 		s_adjacentFiles[file] = BitBoard::fromFile(file).shift(Direction::RIGHT) | BitBoard::fromFile(file).shift(Direction::LEFT);
 	}
 
-	for (auto i : Square::iter()) {
+	for (Square i : Square::iter()) {
 		const BitBoard sqBB = BitBoard::fromSquare(i);
 		s_pawnAttacks[Color::WHITE][i] = sqBB.pawnAttackedSquares<Color::WHITE>();
 		s_pawnAttacks[Color::BLACK][i] = sqBB.pawnAttackedSquares<Color::BLACK>();
 
-		for (auto dir : Direction::iter()) {
+		s_adjacentFilesForward[Color::WHITE][i] = s_adjacentFiles[i.getFile()] & s_threeFilesForward[Color::WHITE][i];
+		s_adjacentFilesForward[Color::BLACK][i] = s_adjacentFiles[i.getFile()] & s_threeFilesForward[Color::BLACK][i];
+
+		for (Direction dir : Direction::iter()) {
 			s_pieceAttacks[PieceType::KING][i] |= sqBB.shift(dir);
 		}
 

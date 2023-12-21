@@ -124,22 +124,10 @@ namespace engine {
 				}
 			}
 
-			if (legalMoves == 0) { // Such situation is highly unlikely, but it is possible that we have no legal moves somehow
-				return SearchResult { .best = Move::makeNullMove(), .value = Value(board.isInCheck() ? -MATE : Value(0)) };
-			} else if (legalMoves == 1) { // We have a single reply, so no need to search any deeper
-				return SearchResult { .best = best, .value = result };
-			}
-
-			// Check if we reached the soft limit
-			// Here is the perfect place to stop search
-			if (g_limits.isSoftLimitBroken()) {
-				return SearchResult { .best = best, .value = result };
-			}
-
 			// Printing the current search state
 			if (options::g_postMode) {
 				if (io::getMode() == io::IOMode::UCI) {
-					io::g_out 
+					io::g_out
 						<< "info depth " << rootDepth
 						<< " nodes " << g_nodesCount
 						<< " time " << g_limits.elapsedMilliseconds();
@@ -158,6 +146,18 @@ namespace engine {
 						<< g_nodesCount << ' '
 						<< g_PVs[-1].toString(best) << std::endl;
 				}
+			}
+
+			if (legalMoves == 0) { // Such situation is highly unlikely, but it is possible that we have no legal moves somehow
+				return SearchResult { .best = Move::makeNullMove(), .value = Value(board.isInCheck() ? -MATE : Value(0)) };
+			} else if (legalMoves == 1) { // We have a single reply, so no need to search any deeper
+				return SearchResult { .best = best, .value = result };
+			}
+
+			// Check if we reached the soft limit
+			// Here is the perfect place to stop search
+			if (g_limits.isSoftLimitBroken()) {
+				return SearchResult { .best = best, .value = result };
 			}
 
 			lastBest = best;

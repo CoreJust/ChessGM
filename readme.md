@@ -22,17 +22,17 @@ The engine is developed as a hobby.
 1) Material
 2) Piece-Square Tables
 3) Tempo
+4) Pawns (backward, isolated, double, defended pawns, pawn islands)
+5) Passed pawns (their rank, tarrasch rule, minor blocking a passed)
+6) Pawn hash table
 
 ## Engine power
 (This is an early version of engine, so its power is low)
 
 ChessMaster was tested in a tournament against several other engines from CCRL
-with time control 0:1+1.
+with time control 0:01+1.
 
-Estimated elo: 2030 (computed with Bayeselo).
-
-_The engine is expected to reach at least 2100 elo by the first release - such was the
-rating of the original engine of mine._
+Estimated elo: 2110 (computed with Bayeselo).
 
 ## Contents
 * ChessMaster2023/ - the source files
@@ -44,15 +44,12 @@ rating of the original engine of mine._
 
 
 # Building
-The project is made in Visual Studio and fully supports MSVC, for MSVC there is a VS solution file. Also, GNU GCC is supported.
+There is a windows binary provided. The project is made in Visual Studio and fully supports MSVC, for MSVC there is a VS solution file. Also, GNU GCC is supported.
 To build with GCC, a Makefile is provided.
 
 # Roadmap
 The features that are supposed to be implemented by the future versions (most of which were implemented in the old ChessMaster of mine):
 
-* 0.4) Pawns update (passed pawns, candidates, pawn structure, pawn blockade, backward pawns, 
-	 double pawns, isolated pawns, fakers?, connected pawns, hanging pawns,
-	 pawn islands, holes, pawn majority, pawn race, weak pawns, dispertion/distotrion...)
 * 0.5) Extensions (single move extension, check extension, capture/recapture extension,
 	 passed pawn extension, PV extension, singular extension...)
 * 0.6) Prunings and reductions (futility pruning, nullmove pruning, razoring, LMR, aspiration window,

@@ -24,6 +24,7 @@
 #include "Eval.h"
 #include "Search.h"
 #include "Test.h"
+#include "Tuning.h"
 
 namespace engine {
 	void handleIncorrectCommandConsole(std::string_view cmd, const std::vector<std::string>& args, CommandError err) {
@@ -87,7 +88,8 @@ namespace engine {
 			"\n\tsearch [depth: uint] - returns the position evaluation based on search for given depth"\
 			"\n\tperft [depth: uint] - starts the performance test for the given depth and prints the number of nodes"\
 			"\n\t? - stops the current search and prints the results or makes a move immediately"\
-			"\n\ttest - developer's command, runs all the tests"
+			"\n\ttest - developer's command, runs all the tests"\
+			"\n\tcompute_eval_err/ceerr [optinal: filename, default: test_suit.fen] - conputes the error of static evaluation for the given positions"
 			<< std::endl;
 	}
 
@@ -205,6 +207,15 @@ namespace engine {
 			IGNORE_CMD("?")
 			CASE_CMD("test", 0, 0) {
 				runTests();
+			} break;
+			CASE_CMD_WITH_VARIANT("compute_eval_err", "ceerr", 0, 1) {
+				std::string fileName = args.size() > 0 ? args[0] : "test_suit.fen";
+				Tuning tuning;
+				
+				tuning.loadPositions(fileName);
+				double err = tuning.computeErr();
+
+				io::g_out << "Evaluation error: " << io::Color::Blue << std::setprecision(10) << err << std::endl;
 			} break;
 			CMD_DEFAULT
 		}

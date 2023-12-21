@@ -23,5 +23,5 @@
 */
 
 constexpr char ENGINE_NAME[] = "ChessMaster";
-constexpr char ENGINE_VERSION[] = "0.3";
+constexpr char ENGINE_VERSION[] = "0.4";
 constexpr char AUTHOR_NAME[] = "Ilyin Yegor";

@@ -686,7 +686,7 @@ std::ostream& operator<<(std::ostream& out, const Board& board) noexcept {
 			Piece piece = board[Square(file, rank)];
 			io::Color color = piece == Piece::NONE
 				? io::Color::White
-				: piece.getColor() == Color::WHITE
+			: piece.getColor() == Color::WHITE
 				? io::Color::Green
 				: io::Color::Magenta;
 			out << " | " << color << piece.toChar() << io::Color::White;

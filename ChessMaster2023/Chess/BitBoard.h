@@ -74,6 +74,14 @@ public:
 	// Contains the bits between on the line that is formed by the squares (if there is)
 	static u64 s_alignedBits[Square::VALUES_COUNT][Square::VALUES_COUNT];
 
+	// [side][square]
+	// Contains the bits ahead of the square on the same file and the two adjacent files
+	static u64 s_threeFilesForward[Color::VALUES_COUNT][Square::VALUES_COUNT];
+
+	// [side][square]
+	// Contains the bits of the adjacent files ahead of the square
+	static u64 s_adjacentFilesForward[Color::VALUES_COUNT][Square::VALUES_COUNT];
+
 	// [pawn color][square]
 	// Contains a bitboard of pawn attacks from the given square
 	static u64 s_pawnAttacks[Color::VALUES_COUNT][Square::VALUES_COUNT];
@@ -295,6 +303,13 @@ public:
 	
 	// Getters
 
+	template<Direction::Value Dir>
+	CM_PURE static BitBoard directionBits(const Square sq) noexcept {
+		high_assert(sq < 64);
+
+		return s_directionBits[sq][Dir];
+	}
+
 	CM_PURE static BitBoard alignedBits(const Square a, const Square b) noexcept {
 		high_assert(a < 64 && b < 64);
 
@@ -305,6 +320,26 @@ public:
 		high_assert(a < 64 && b < 64);
 
 		return s_betweenBits[a][b];
+	}
+
+	CM_PURE static BitBoard adjacentFiles(const File file) noexcept {
+		high_assert(file < 8);
+
+		return s_adjacentFiles[file];
+	}
+
+	template<Color::Value Side>
+	CM_PURE static BitBoard threeFilesForward(const Square sq) noexcept {
+		high_assert(sq < 64);
+
+		return s_threeFilesForward[Side][sq];
+	}
+
+	template<Color::Value Side>
+	CM_PURE static BitBoard adjacentFilesForward(const Square sq) noexcept {
+		high_assert(sq < 64);
+
+		return s_adjacentFilesForward[Side][sq];
 	}
 
 	CM_PURE static BitBoard castlingInternalSquares(const Color color, const Castle castle) noexcept {
@@ -321,6 +356,11 @@ public:
 		} else { // Black
 			return shift(Direction::DOWNLEFT) | shift(Direction::DOWNRIGHT);
 		}
+	}
+
+	// The squares: one to the left and one to the right
+	CM_PURE constexpr BitBoard neighbouringSquares() const noexcept {
+		return shift(Direction::LEFT) | shift(Direction::RIGHT);
 	}
 
 	CM_PURE static BitBoard pawnAttacks(const Color color, const Square sq) noexcept {

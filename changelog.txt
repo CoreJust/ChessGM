@@ -1,5 +1,27 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.4  ###
+	* Pawns update / 21.12.2023
+	
+	* Defended pawns | + ~30 elo
+	* Defended pawns based on advancement | + ~10 elo
+	* Passed pawns | + ~15 elo
+	* Backward pawns | + ~5 elo
+	* Double pawns | + ~20 elo
+	* Pawn islands | + ~10 elo
+	* Isolated pawns | + ~3 elo (after 1000 games)
+	* Pawn distortion | + ~2 elo (after 1200 games)
+	* Pawn hash tables | + ~25 elo
+	
+	* Added simple tuning method: the engine can read a set of positions and compute the mean evaluation error.
+	
+	* Simple evaluation (manual) tuning | + ~25 elo
+	
+	* The engine reached the level of my old engine this one is based on.
+	
+	* Power: 2110 elo
+
+
 ###  Version 0.3  ###
 	* Move ordering update / 19.12.2023
 	
@@ -14,7 +36,7 @@
 	* Two-tier transposition table scheme | + ~35 elo
 	* Killer moves | + ~15 elo
 	
-	* Power: 2030 elo
+	* Power: 2000 elo
 
 
 ###  Version 0.2.1  ###
