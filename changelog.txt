@@ -1,5 +1,21 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.5  ###
+	* Prunings and reductions update / 23.12.2023
+	
+	* Principal Variation Search | + ~10 elo
+	* Futility Pruning + Razoring | + ~120 elo
+	* Null Move Pruning | + ~70 elo
+	* Double Null Move | + ~30 elo
+	* LMR | + ~45 elo
+	* Shallow Depth SEE Pruning | + ~25 elo
+	* History Leaf Pruning | + ~15 elo
+	
+	* Mate Distance Pruning | no significant power boost, it is more helpful for analysis mode
+	
+	* Power: 2397 elo
+
+
 ###  Version 0.4  ###
 	* Pawns update / 21.12.2023
 	

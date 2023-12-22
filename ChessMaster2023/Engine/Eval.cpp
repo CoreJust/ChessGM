@@ -26,8 +26,6 @@ namespace engine {
 		constexpr Color::Value OppositeSide = Color(Side).getOpposite().value();
 		constexpr Direction::Value Up = Direction::makeRelativeDirection(Side, Direction::UP).value();
 		constexpr Direction::Value Down = Direction::makeRelativeDirection(Side, Direction::DOWN).value();
-		constexpr Rank Rank2 = Rank::makeRelativeRank(Side, Rank::R2);
-		constexpr BitBoard BBRank2 = BitBoard::fromRank(Rank2);
 
 		Score result = board.scoreByColor(Side);
 		const BitBoard occ = board.allPieces();

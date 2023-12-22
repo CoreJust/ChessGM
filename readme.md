@@ -12,6 +12,14 @@ The engine is developed as a hobby.
 3) History heuristic
 4) Killer moves
 5) 2-tier transposition table
+6) Principal Variation Search
+7) Futility Pruning
+8) Razoring
+9) Null Move Pruning with verification
+10) Late Move Reduction
+11) Shallow Depth SEE Pruning
+12) History Leaf Pruning
+13) Mate Distance Pruning
 
 * Quiescence search:
 1) Captures, promotions, checks and check evasions
@@ -27,12 +35,10 @@ The engine is developed as a hobby.
 6) Pawn hash table
 
 ## Engine power
-(This is an early version of engine, so its power is low)
-
 ChessMaster was tested in a tournament against several other engines from CCRL
 with time control 0:01+1.
 
-Estimated elo: 2110 (computed with Bayeselo).
+Estimated elo: 2397 (computed with Bayeselo).
 
 ## Contents
 * ChessMaster2023/ - the source files
@@ -50,10 +56,8 @@ To build with GCC, a Makefile is provided.
 # Roadmap
 The features that are supposed to be implemented by the future versions (most of which were implemented in the old ChessMaster of mine):
 
-* 0.5) Extensions (single move extension, check extension, capture/recapture extension,
+* 0.6) Extensions (single move extension, check extension, capture/recapture extension,
 	 passed pawn extension, PV extension, singular extension...)
-* 0.6) Prunings and reductions (futility pruning, nullmove pruning, razoring, LMR, aspiration window,
-	 mate distance pruning, multi-cut, probcut, history leaf pruning...)
 * 0.7) Miscelaneous small updates:
 * 0.7.0) Separate evaluations for specific endgames
 * 0.7.1) Evaluation for material combinations

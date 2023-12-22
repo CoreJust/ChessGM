@@ -37,14 +37,12 @@
 * 
 *	Canceled ideas (were not useful in the version they were expected to be added in):
 *		Countermove Table, SEE in move ordering, Internal Iterative Deepening, Mate Killers, Duo Pawns,
-*		Candidate Pawns
+*		Candidate Pawns, Threat Move detection with Null Move, Multicut, Probcut, Aspiration Window
 *		
 * 
 *	TODO by future versions (general plans, features to try):
-*		0.5) Extensions (single move extension, check extension, capture/recapture extension,
+*		0.6) Extensions (single move extension, check extension, capture/recapture extension,
 *						 passed pawn extension, PV extension, singular extension...)
-*		0.6) Prunings and reductions (futility pruning, nullmove pruning, razoring, LMR, aspiration window,
-*									  mate distance pruning, multi-cut, probcut, history leaf pruning...)
 *		0.7) Miscelaneous small updates:
 *		0.7.0) Separate evaluations for specific endgames
 *		0.7.1) Evaluation for material combinations

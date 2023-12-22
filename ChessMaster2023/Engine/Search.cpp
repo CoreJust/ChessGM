@@ -33,6 +33,18 @@ namespace engine {
 	constexpr Value DELTA_PRUNING_MARGIN = 200;
 
 	constexpr Depth MAX_QPLY_FOR_CHECKS = 2;
+	constexpr Depth MIN_NULLMOVE_DEPTH = 2;
+	constexpr Depth NULLMOVE_DEPTH_REDUCTION_BASE = 3;
+	constexpr Depth MIN_NULLMOVE_VERIFICATION_DEPTH = 5;
+	constexpr Depth MIN_LMR_DEPTH = 3;
+	constexpr Depth MAX_LOW_DEPTH_SEE_PRUNING_DEPTH = 3;
+
+	constexpr Depth NULLMOVE_HIGH_DEPTH_DENOMINATOR = 5;
+	constexpr Value NULLMOVE_BETA_DIFFERENCE_DENOMINATOR = 300;
+	constexpr Value LMR_MAX_HISTORY_SUCCESS_RATE = 75;
+	constexpr u8 LMR_MIN_QUIETS_COUNT = 2;
+	constexpr Depth LMR_HIGH_DEPTH_DENOMINATOR = 9;
+	constexpr u8 LMR_MANY_QUIETS_DENOMINATOR = 9;
 
 
 	// Global variables
@@ -210,6 +222,18 @@ namespace engine {
 		}
 
 
+		///  MATE DISTANCE PRUNING  ///
+
+		if constexpr (NT != NodeType::PV) {
+			alpha = std::max(alpha, Value(-MATE + ply));
+			beta = std::min(beta, Value(MATE - ply));
+
+			if (alpha >= beta) {
+				return alpha;
+			}
+		}
+
+
 		///  TRANSPOSITION TABLE  ///
 
 		TableEntry* entry = TranspositionTable::probe(board.computeHash());
@@ -244,9 +268,72 @@ namespace engine {
 		}
 
 
+		///  PRUNINGS AND REDUCTIONS  ///
+
+		const bool isInCheck = board.isInCheck();
+		if (NT != NodeType::PV && !isInCheck) {
+			const static Value FUTILITY_MARGIN[] = { 0, 50, 200, 400, 700 };
+
+			Value staticEval = eval(board);
+
+
+			///  FUTILITY PRUNING  ///
+
+			if (depth <= 4) {
+				const Value margin = FUTILITY_MARGIN[depth];
+
+				if (staticEval <= alpha - margin) {
+					return quiescence(board, alpha, beta, ply, 0);
+				} if (staticEval >= beta + margin) {
+					return beta;
+				}
+			}
+
+
+			/// NULL MOVE  ///
+
+			if (staticEval >= beta 
+				&& depth >= MIN_NULLMOVE_DEPTH 
+				&& board.hasNonPawns(board.side())) {
+				Depth R = NULLMOVE_DEPTH_REDUCTION_BASE 
+					+ (depth - MIN_NULLMOVE_DEPTH) / NULLMOVE_HIGH_DEPTH_DENOMINATOR 
+					+ std::max((staticEval - beta) / NULLMOVE_BETA_DIFFERENCE_DENOMINATOR, 0);
+
+				if (R < 0) {
+					R = 0;
+				}
+
+				board.makeNullMove();
+				Value tmp = -search<NodeType::NON_PV>(board, -beta, -beta + 1, depth - R, ply + 1);
+				board.unmakeNullMove();
+
+				if (g_mustStop) {
+					return alpha;
+				}
+
+				if (tmp >= beta) {
+					if (isMateValue(tmp)) {
+						tmp = beta;
+					}
+
+					if (depth >= MIN_NULLMOVE_VERIFICATION_DEPTH) { // Verifying the results
+						Value verification = search<NodeType::NON_PV>(board, beta - 1, beta, depth - R, ply);
+
+						if (verification >= beta) {
+							return tmp;
+						}
+					} else {
+						return tmp;
+					}
+				}
+			}
+		}
+
+
 		///  RECURSIVE SEARCH  ///
 
 		u8 legalMovesCount = 0;
+		u8 quietMovesCount = 0;
 		EntryType entryType = EntryType::ALPHA;
 		Move bestMove = Move::makeNullMove();
 
@@ -256,25 +343,92 @@ namespace engine {
 		MoveList& moves = g_moveLists[ply];
 		board.generateMoves(moves);
 
-		MovePicker picker(board, moves, ply, ss, tableMove);
+		MovePicker picker(board, moves, ply, tableMove, ss);
 		while (picker.hasMore()) {
 			const Move m = picker.pick();
 			if (!board.isLegal(m)) {
 				continue;
 			}
 
+			++legalMovesCount;
+
 			const bool isQuiet = board.isQuiet(m);
-			if (isQuiet && !board.isInCheck()) { // Updating the history
+			if (NT != NodeType::PV && depth <= MAX_LOW_DEPTH_SEE_PRUNING_DEPTH && !isInCheck && board.hasNonPawns(board.side())) {
+
+
+				///  LOW DEPTH SEE PRUNING  ///
+
+				if (board.SEE(m) <= -scores::SIMPLIFIED_PIECE_VALUES[Piece::PAWN_WHITE] * depth) {
+					continue; // Skip losing moves at low depth
+				}
+
+
+				///  HISTORY LEAF PRUNING  ///
+
+				if (isQuiet && ++quietMovesCount > LMR_MIN_QUIETS_COUNT) {
+					const static Value MAX_SUCCESS_RATE[] = { 0, 20, 12, 7, 3 };
+
+					const Value historySuccessRate = MovePicker::getHistoryValue(board[m.getFrom()], m.getTo());
+					if (historySuccessRate < MAX_SUCCESS_RATE[depth] && !board.givesCheck(m)) {
+						continue;
+					}
+				}
+			}
+
+			if (isQuiet && !isInCheck) { // Updating the history
 				MovePicker::addHistoryTry(board, m, depth);
 			}
 
-			++legalMovesCount;
 			++g_nodesCount;
-
 			board.makeMove(m);
-			Value tmp = -search<NT>(board, -beta, -alpha, depth - 1, ply + 1);
-			board.unmakeMove(m);
 
+
+			///  LATE MOVE REDUCTIONS  ///
+
+			Depth reduction = 0;
+			if (depth >= MIN_LMR_DEPTH
+				&& !isInCheck
+				&& !board.isInCheck() // does not gives check
+				&& isQuiet) {
+				const Value historySuccessRate = MovePicker::getHistoryValue(board[m.getTo()], m.getTo());
+
+				if (historySuccessRate < LMR_MAX_HISTORY_SUCCESS_RATE && ++quietMovesCount > LMR_MIN_QUIETS_COUNT) {
+					reduction = 1 
+						+ (depth - MIN_LMR_DEPTH) / LMR_HIGH_DEPTH_DENOMINATOR 
+						+ (quietMovesCount - LMR_MIN_QUIETS_COUNT) / LMR_MANY_QUIETS_DENOMINATOR;
+
+					if (historySuccessRate > 50) {
+						--reduction;
+					} else if (historySuccessRate < 10) {
+						++reduction;
+
+						if (historySuccessRate < 2) {
+							++reduction;
+						}
+					}
+
+					if (reduction >= depth) {
+						reduction = depth - 1;
+					}
+				}
+			}
+
+
+			///  PRINCIPAL VARIATION SEARCH  ///
+
+			Value tmp;
+			if (legalMovesCount == 1) {
+				tmp = -search<NT>(board, -beta, -alpha, depth - 1, ply + 1);
+			} else {
+				tmp = -search<NodeType::NON_PV>(board, -alpha - 1, -alpha, depth - reduction - 1, ply + 1);
+				if (tmp > alpha && reduction) { // LMR failed
+					tmp = -search<NodeType::NON_PV>(board, -alpha - 1, -alpha, depth - 1, ply + 1);
+				} if (NT == NodeType::PV && tmp > alpha && tmp < beta) { // Full window search
+					tmp = -search<NodeType::PV>(board, -beta, -alpha, depth - 1, ply + 1);
+				}
+			}
+
+			board.unmakeMove(m);
 			if (g_mustStop) {
 				return alpha;
 			}
@@ -296,7 +450,7 @@ namespace engine {
 			}
 
 			if (alpha >= beta) { // The actual pruning
-				if (isQuiet && !board.isInCheck()) { // Updating the history
+				if (isQuiet && !isInCheck) { // Updating the history
 					MovePicker::addHistorySuccess(board, m, depth);
 					if (ss->firstKiller.getData() != m.getData()) { // Uodating killers
 						ss->secondKiller = std::exchange(ss->firstKiller, m);
@@ -363,7 +517,10 @@ namespace engine {
 
 		Value staticEval = eval(board);
 		if (!board.isInCheck()) {
-			// Standing pat
+
+
+			///  STANDING PAT  ///
+
 			if (staticEval >= beta) {
 				return staticEval;
 			}
@@ -394,30 +551,31 @@ namespace engine {
 
 			++legalMovesCount;
 
-			if (!isInCheck) { 
-				if (board.byPieceType(PieceType::PAWN) != BitBoard::EMPTY) { // So as not to prune in endgame
-					///  Delta pruning  ///
+			if (!isInCheck && board.hasNonPawns(board.side())) { // So as not to prune in endgame
 
-					// Idea: if with the value of the captured piece, even with a surplus margin
-					//		 cannot improve the value, than the move is unlikely to improve the alpha as well.
-					// Promotions are not considered here
-					if (m.getMoveType() != MoveType::PROMOTION) {
-						Value capturedValue = scores::SIMPLIFIED_PIECE_VALUES[
-							m.getMoveType() == MoveType::ENPASSANT ? Piece::PAWN_WHITE : board[m.getTo()]
-						];
 
-						if (staticEval + capturedValue + DELTA_PRUNING_MARGIN <= alpha && !board.givesCheck(m)) {
-							continue;
-						}
-					}
+				///  DELTA PRUNING  ///
 
-					///  SEE pruning  ///
+				// Idea: if with the value of the captured piece, even with a surplus margin
+				//		 cannot improve the value, than the move is unlikely to improve the alpha as well.
+				// Promotions are not considered here
+				if (m.getMoveType() != MoveType::PROMOTION) {
+					Value capturedValue = scores::SIMPLIFIED_PIECE_VALUES[
+						m.getMoveType() == MoveType::ENPASSANT ? Piece::PAWN_WHITE : board[m.getTo()]
+					];
 
-					// Checks if the move can lead to any benefit
-					// If not, than we can likely safely skip it
-					if (board.SEE(m) < 0) {
+					if (staticEval + capturedValue + DELTA_PRUNING_MARGIN <= alpha && !board.givesCheck(m)) {
 						continue;
 					}
+				}
+
+
+				///  SEE PRUNING  ///
+				
+				// Checks if the move can lead to any benefit
+				// If not, than we can likely safely skip it
+				if (board.SEE(m) < 0) {
+					continue;
 				}
 			}
 

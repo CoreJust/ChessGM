@@ -62,8 +62,8 @@ namespace engine {
 			Board& board,
 			MoveList& moves, 
 			const Depth ply,
-			SearchStack* ss = &s_noSS,
-			const Move tableMove = Move::makeNullMove()
+			const Move tableMove = Move::makeNullMove(),
+			SearchStack* ss = &s_noSS
 		) noexcept : m_first(moves.begin()), m_end(moves.end()) {
 			for (Move* move = m_first; move < m_end; ++move) {
 				const u16 data = move->getData();

@@ -34,6 +34,14 @@
 *		7) MVV/LVA non-quiets sort
 *		8) History heuristic
 *		9) Killer moves
+*		10) Principal Variation Search
+*		11) Futility Pruning
+*		12) Razoring
+*		13) Null Move Pruning
+*		14) Mate Distance Pruning
+*		15) Late Move Reduction
+*		16) Shallow Depth SEE Pruning
+*		17) History Leaf Pruning
 */
 
 namespace engine {

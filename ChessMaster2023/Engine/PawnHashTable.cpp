@@ -17,6 +17,8 @@
 */
 
 #include "PawnHashTable.h"
+#include <cstring>
+
 #include "Scores.h"
 
 namespace engine {
@@ -55,7 +57,6 @@ namespace engine {
 	void PawnHashTable::scanPawns(Board& board, PawnHashEntry& entry) {
 		constexpr Color::Value OppositeSide = Color(Side).getOpposite().value();
 		constexpr Direction::Value Up = Direction::makeRelativeDirection(Side, Direction::UP).value();
-		constexpr Direction::Value Down = Direction::makeRelativeDirection(Side, Direction::DOWN).value();
 		constexpr Rank Rank2 = Rank::makeRelativeRank(Side, Rank::R2);
 		constexpr BitBoard BBRank2 = BitBoard::fromRank(Rank2);
 

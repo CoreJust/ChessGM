@@ -40,7 +40,7 @@ Board::Board() noexcept
 	}
 
 	m_states.reserve(64);
-	StateInfo& firstState = m_states.emplace_back();
+	m_states.emplace_back();
 }
 
 Board::Board(Board&& other) noexcept
@@ -444,10 +444,6 @@ void Board::unmakeMove(const Move m) noexcept  {
 	assert(m_states.size());
 
 	constexpr Color OppositeSide = Color(Side).getOpposite();
-	constexpr Piece OurPawn = Piece(Side, PieceType::PAWN);
-	constexpr Piece OppositePawn = Piece(OppositeSide, PieceType::PAWN);
-	constexpr Piece OurRook = Piece(Side, PieceType::ROOK);
-	constexpr Piece OurKing = Piece(Side, PieceType::KING);
 
 	const Piece captured = state().captured;
 	m_states.pop_back();
@@ -516,9 +512,6 @@ void Board::generateMoves(MoveList& moves) const noexcept {
 	constexpr Direction Down = Direction::makeRelativeDirection(Side, Direction::DOWN);
 	constexpr Direction DownRight = Direction::makeRelativeDirection(Side, Direction::DOWNRIGHT);
 	constexpr Direction DownLeft = Direction::makeRelativeDirection(Side, Direction::DOWNLEFT);
-	constexpr Direction Right = Direction::makeRelativeDirection(Side, Direction::RIGHT);
-	constexpr Direction Left = Direction::makeRelativeDirection(Side, Direction::LEFT);
-	constexpr BitBoard Rank2BB = BitBoard::fromRank(Rank::makeRelativeRank(Side, Rank::R2));
 	constexpr BitBoard Rank3BB = BitBoard::fromRank(Rank::makeRelativeRank(Side, Rank::R3));
 	constexpr BitBoard Rank7BB = BitBoard::fromRank(Rank::makeRelativeRank(Side, Rank::R7));
 

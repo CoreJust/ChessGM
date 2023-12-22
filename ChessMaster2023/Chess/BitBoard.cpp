@@ -131,7 +131,7 @@ void BitBoard::init() noexcept {
 
 void BitBoard::initMagicBitBoards(const PieceType pt, BitBoard* table, MagicBitBoards* magics) noexcept {
 	BitBoard occupancy[4096], reference[4096], edges, b;
-	i32      cnt = 0, size = 0;
+	i32      size = 0;
 
 	for (Square s : Square::iter()) {
 		edges = ((BitBoard::RANK_1 | BitBoard::fromRank(Rank::R8)) & ~BitBoard::fromRank(Square(s).getRank()))

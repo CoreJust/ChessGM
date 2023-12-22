@@ -420,6 +420,14 @@ public:
 		return m_piecesByColor[color];
 	}
 
+	// Returns whether there are any pieces apart from pawns and the king for the given side
+	CM_PURE constexpr bool hasNonPawns(const Color color) const noexcept {
+		return m_piecesByColor[color]
+			.b_xor(m_pieces[Piece(color, PieceType::PAWN)])
+			.b_xor(m_pieces[Piece(color, PieceType::KING)])
+			!= BitBoard::EMPTY;
+	}
+
 	CM_PURE constexpr Score& scoreByColor(const Color color) noexcept {
 		return m_score[color];
 	}
@@ -496,6 +504,10 @@ public:
 	// Returns the number of moves counted by the fifty rule (moves since last capture/pawn advance)
 	CM_PURE u8 fiftyRule() const noexcept {
 		return state().fiftyRule;
+	}
+
+	CM_PURE u32 movesFromNull() const noexcept {
+		return state().movesFromNull;
 	}
 
 	CM_PURE u8& castleRight() noexcept {

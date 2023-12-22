@@ -17,6 +17,7 @@
 */
 
 #include "Tuning.h"
+#include <cmath>
 #include <fstream>
 
 #include "Eval.h"

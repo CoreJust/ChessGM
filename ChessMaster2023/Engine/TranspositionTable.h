@@ -121,8 +121,8 @@ namespace engine {
 				|| mainEntry.age <= s_rootAge // The entry already aged
 				|| depth > mainEntry.depth // A more deep searched entry is prefered
 				|| (depth == mainEntry.depth						// If the entry is as deep as an already found
-					&& (type & PV) >= (mainEntry.type & PV)		// and it is not a Non-PV node while the written one is PV
-					&& (type & 0x110) <= mainEntry.getBoundType()) // and its bound type is better, than we overwrite the entry
+					&& (type & PV) >= (mainEntry.type & PV)			// and it is not a Non-PV node while the written one is PV
+					&& (type & 0x110) <= mainEntry.getBoundType())	// and its bound type is better, than we overwrite the entry
 			) {
 				if (isMateValue(value)) { // Fixing the mate values
 					if (value > MATE - 2 * MAX_DEPTH) {
