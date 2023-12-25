@@ -135,6 +135,10 @@ public:
 		return BitBoard(1ull << square);
 	}
 
+	CM_PURE static constexpr BitBoard fromColor(const Color color) noexcept {
+		return BitBoard(0xAA55AA55AA55AA55 << color);
+	}
+
 	template<size_t Size>
 	CM_PURE consteval static BitBoard fromSquares(const Square(&squares)[Size]) noexcept {
 		BitBoard result = BitBoard::EMPTY;

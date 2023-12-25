@@ -51,10 +51,10 @@ namespace engine {
 	std::atomic_bool g_mustStop = false; // Must the search stop?
 
 	NodesCount g_nodesCount = 0; // Nodes during the current search
+	Depth g_rootDepth = 0;
 	SearchStack g_searchStacks[2 * MAX_DEPTH + 2];
 	MoveList g_moveLists[2 * MAX_DEPTH];
-	MoveList _g_PVs[2 * MAX_DEPTH + 1];
-	MoveList* g_PVs = _g_PVs + 1; // So as to access the ply = -1 (for root moves)
+	MoveList g_PVs[2 * MAX_DEPTH];
 
 	Limits g_limits;
 
@@ -85,15 +85,18 @@ namespace engine {
 	}
 
 	SearchResult rootSearch(Board& board) {
-		static MoveList moves;
+		//static MoveList moves;
 
 		Move lastBest;
-		Value lastResult = -INF;
-		Depth rootDepth = 0;
+		Value lastResult = 0;
+		Value alpha = -INF;
+		Value beta = INF;
+		Value result = 0;
 
 		// Initializing the search
 		g_mustStop = false;
 		g_nodesCount = 0;
+		g_rootDepth = 0;
 
 		MovePicker::resetHistoryTables();
 		TranspositionTable::setRootAge(board.moveCount());
@@ -101,38 +104,33 @@ namespace engine {
 		memset(g_searchStacks, 0, sizeof(g_searchStacks));
 
 		// Looking for the best move
-		board.generateMoves(moves);
-		while (!g_limits.isDepthLimitBroken(++rootDepth)) {
-			Move best;
-			Value result = -INF;
-			u8 legalMoves = 0;
+		while (!g_limits.isDepthLimitBroken(++g_rootDepth)) {
 
-			g_PVs[-1].clear();
-			for (Move &m : moves) {
-				if (!board.isLegal(m)) {
-					continue;
-				}
 
-				++legalMoves;
-				board.makeMove(m);
-				Value tmp = -search<NodeType::PV>(board, -INF, -result, rootDepth - 1, 0);
-				board.unmakeMove(m);
+			///  ASPIRATION WINDOW  ///
 
-				m.setValue(tmp);
-				if (tmp > result) {
-					result = tmp;
-					best = m;
+			const static i32 WINDOW_WIDTH[] = { 35, 110, 450, 2 * INF };
+			u8 failedLowCnt = g_rootDepth < 2 ? std::size(WINDOW_WIDTH) - 1 : 0;
+			u8 failedHighCnt = failedLowCnt;
 
-					// Copying the PV
-					g_PVs[-1].mergeWith(g_PVs[0], 0);
-				}
+			alpha = Value(std::max(i32(-INF), i32(result) - WINDOW_WIDTH[failedLowCnt]));
+			beta = Value(std::min(i32(INF), i32(result) + WINDOW_WIDTH[failedHighCnt]));
+
+			while (true) {
+				result = search<NodeType::PV>(board, alpha, beta, g_rootDepth, 0);
 
 				if (g_mustStop) {
-					if (lastBest.isNullMove()) { // In case we haven't finished the first iteration
-						return SearchResult { .best = best, .value = result };
-					} else {
-						return SearchResult { .best = lastBest, .value = lastResult };
-					}
+					return SearchResult { .best = lastBest, .value = lastResult };
+				}
+
+				if (result <= alpha && failedLowCnt < std::size(WINDOW_WIDTH) - 1) { // Failed low
+					alpha = Value(std::max(i32(-INF), i32(result) - WINDOW_WIDTH[++failedLowCnt]));
+					beta = Value(std::min(i32(INF), i32(result) + WINDOW_WIDTH[failedHighCnt]));
+				} else if (result >= beta && failedHighCnt < std::size(WINDOW_WIDTH) - 1) { // Failed low
+					alpha = Value(std::max(i32(-INF), i32(result) - WINDOW_WIDTH[failedLowCnt]));
+					beta = Value(std::min(i32(INF), i32(result) + WINDOW_WIDTH[++failedHighCnt]));
+				} else {
+					break;
 				}
 			}
 
@@ -140,7 +138,7 @@ namespace engine {
 			if (options::g_postMode) {
 				if (io::getMode() == io::IOMode::UCI) {
 					io::g_out
-						<< "info depth " << rootDepth
+						<< "info depth " << g_rootDepth
 						<< " nodes " << g_nodesCount
 						<< " time " << g_limits.elapsedMilliseconds();
 
@@ -150,33 +148,24 @@ namespace engine {
 						io::g_out << " score cp " << result;
 					}
 
-					io::g_out << " pv " << g_PVs[-1].toString(best) << std::endl;
+					io::g_out << " pv " << g_PVs[0].toString() << std::endl;
 				} else { // Xboard/Console
-					io::g_out << rootDepth << ' '
+					io::g_out << g_rootDepth << ' '
 						<< result << ' '
 						<< g_limits.elapsedCentiseconds() << ' '
 						<< g_nodesCount << ' '
-						<< g_PVs[-1].toString(best) << std::endl;
+						<< g_PVs[0].toString() << std::endl;
 				}
-			}
-
-			if (legalMoves == 0) { // Such situation is highly unlikely, but it is possible that we have no legal moves somehow
-				return SearchResult { .best = Move::makeNullMove(), .value = Value(board.isInCheck() ? -MATE : Value(0)) };
-			} else if (legalMoves == 1) { // We have a single reply, so no need to search any deeper
-				return SearchResult { .best = best, .value = result };
 			}
 
 			// Check if we reached the soft limit
 			// Here is the perfect place to stop search
 			if (g_limits.isSoftLimitBroken()) {
-				return SearchResult { .best = best, .value = result };
+				return SearchResult { .best = g_PVs[0][0], .value = result };
 			}
 
-			lastBest = best;
+			lastBest = g_PVs[0][0];
 			lastResult = result;
-
-			// Sorting the moves
-			std::sort(moves.begin(), moves.end(), [](Move a, Move b) -> bool { return a.getValue() < b.getValue(); });
 		}
 
 		return SearchResult { .best = lastBest, .value = lastResult };
@@ -379,6 +368,7 @@ namespace engine {
 				MovePicker::addHistoryTry(board, m, depth);
 			}
 
+			// Making the move
 			++g_nodesCount;
 			board.makeMove(m);
 
@@ -420,7 +410,7 @@ namespace engine {
 			if (legalMovesCount == 1) {
 				tmp = -search<NT>(board, -beta, -alpha, depth - 1, ply + 1);
 			} else {
-				tmp = -search<NodeType::NON_PV>(board, -alpha - 1, -alpha, depth - reduction - 1, ply + 1);
+				tmp = -search<NodeType::NON_PV>(board, -alpha - 1, -alpha, depth - 1 - reduction, ply + 1);
 				if (tmp > alpha && reduction) { // LMR failed
 					tmp = -search<NodeType::NON_PV>(board, -alpha - 1, -alpha, depth - 1, ply + 1);
 				} if (NT == NodeType::PV && tmp > alpha && tmp < beta) { // Full window search
@@ -443,6 +433,12 @@ namespace engine {
 
 				// Updating the PV
 				if constexpr (NT == NodeType::PV) {
+					g_PVs[ply].clear();
+					g_PVs[ply].push(m);
+					g_PVs[ply].mergeWith(g_PVs[ply + 1], 1);
+				}
+			} else if constexpr (NT == NodeType::PV) {
+				if (!ply && legalMovesCount == 1) {
 					g_PVs[ply].clear();
 					g_PVs[ply].push(m);
 					g_PVs[ply].mergeWith(g_PVs[ply + 1], 1);

@@ -443,8 +443,6 @@ template<Color::Value Side>
 void Board::unmakeMove(const Move m) noexcept  {
 	assert(m_states.size());
 
-	constexpr Color OppositeSide = Color(Side).getOpposite();
-
 	const Piece captured = state().captured;
 	m_states.pop_back();
 

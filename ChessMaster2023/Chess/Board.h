@@ -344,12 +344,27 @@ public:
 		}
 	}
 
+	// Checks if the side doesn't have bishops of different colors
+	CM_PURE constexpr bool hasOnlySameColoredBishops(const Color color) const noexcept {
+		BitBoard bishops = this->bishops(color);
+		return bishops.b_and(BitBoard::fromColor(Color::WHITE)) == BitBoard::EMPTY
+			|| bishops.b_and(BitBoard::fromColor(Color::BLACK)) == BitBoard::EMPTY;
+	}
+
 	CM_PURE constexpr BitBoard allPieces() const noexcept {
 		return m_piecesByColor[Color::WHITE].b_or(m_piecesByColor[Color::BLACK]);
 	}
 
 	CM_PURE constexpr BitBoard byPieceType(const PieceType pt) const noexcept {
 		return m_pieces[Piece(Color::WHITE, pt)].b_or(m_pieces[Piece(Color::BLACK, pt)]);
+	}
+
+	CM_PURE constexpr BitBoard pawns(const Color color) const noexcept {
+		return m_pieces[Piece(color, PieceType::PAWN)];
+	}
+
+	CM_PURE constexpr BitBoard knights(const Color color) const noexcept {
+		return m_pieces[Piece(color, PieceType::KNIGHT)];
 	}
 
 	CM_PURE constexpr BitBoard bishops(const Color color) const noexcept {

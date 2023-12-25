@@ -284,6 +284,7 @@ WRAPPED_ENUM_BEGIN(Square, u8)
 WRAPPED_ENUM_IMPL_WITH(NO_POS)
 private:
 	inline static u8 s_distance[VALUES_COUNT][VALUES_COUNT];
+	inline static u8 s_manhattanDistance[VALUES_COUNT][VALUES_COUNT];
 
 public:
 	INLINE constexpr Square(const File file, const Rank rank) noexcept : EnumWrap<u8>(file | u8(rank << 3)) { }
@@ -294,12 +295,22 @@ public:
 			for (u8 b = 0; b < 64; b++) {
 				const Square sqb(b);
 				s_distance[a][b] = std::max(Rank::distance(sqa.getRank(), sqb.getRank()), File::distance(sqa.getFile(), sqb.getFile()));
+				s_manhattanDistance[a][b] = Rank::distance(sqa.getRank(), sqb.getRank()) + File::distance(sqa.getFile(), sqb.getFile());
 			}
 		}
 	}
 
 	CM_PURE static u8 distance(const Square a, const Square b) noexcept {
 		return s_distance[a][b];
+	}
+
+	CM_PURE static u8 manhattanDistance(const Square a, const Square b) noexcept {
+		return s_manhattanDistance[a][b];
+	}
+
+	// Inversed distance - measure of how close squares are
+	CM_PURE static u8 manhattanClosedness(const Square a, const Square b) noexcept {
+		return u8(14) - s_manhattanDistance[a][b];
 	}
 
 	// For example: 'e', '8'

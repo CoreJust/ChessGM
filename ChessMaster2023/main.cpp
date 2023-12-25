@@ -37,20 +37,16 @@
 * 
 *	Canceled ideas (were not useful in the version they were expected to be added in):
 *		Countermove Table, SEE in move ordering, Internal Iterative Deepening, Mate Killers, Duo Pawns,
-*		Candidate Pawns, Threat Move detection with Null Move, Multicut, Probcut, Aspiration Window
+*		Candidate Pawns, Threat Move detection with Null Move, Multicut, Probcut
 *		
 * 
 *	TODO by future versions (general plans, features to try):
-*		0.6) Extensions (single move extension, check extension, capture/recapture extension,
-*						 passed pawn extension, PV extension, singular extension...)
-*		0.7) Miscelaneous small updates:
-*		0.7.0) Separate evaluations for specific endgames
-*		0.7.1) Evaluation for material combinations
-*		0.7.2) Checking if the stuff that didn't work in the previous versions would work now
-*		0.8) Pieces update (mobility, space, connectivity, center control, trapped pieces...)
-*		0.8.1) Knights and bishops (outposts, bad bishop, fianchetto, color weakness)
-*		0.8.2) Rooks and queens (rook on (semi)open file, rook on seventh rank,
+*		0.7) Pieces update (mobility, space, connectivity, center control, trapped pieces...)
+*		0.7.1) Knights and bishops (outposts, bad bishop, fianchetto, color weakness)
+*		0.7.2) Rooks and queens (rook on (semi)open file, rook on seventh rank,
 *								 paired rooks, queens penalty for early development, tropism?)
+*		0.8) Extensions (single move extension, check extension, capture/recapture extension,
+*						 passed pawn extension, PV extension, singular extension...)
 *		0.9) King update (mate at a glance, pins/x-rays, castlings (rights), pawn shield, pawn storm, tropism,
 *						   virtual mobility, scaling with material, king zone attack, square control in king zone,
 *						   king pawn tropism)
@@ -66,7 +62,10 @@
 *		4) Ensuring correct Makefile
 *		5) Ensuring all the changes were properly documented in changelog.txt and the readme.md was properly modified
 * 
-*	Current version TODO: -
+*	Current version TODO: 
+*		0.6) Miscelaneous small updates:
+*		0.6.1) Evaluation for material combinations
+*		0.6.2) Checking if the stuff that didn't work in the previous versions would work now, set up the AW
 * 
 *	Bugs: -
 */

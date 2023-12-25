@@ -57,8 +57,6 @@ namespace engine {
 	void PawnHashTable::scanPawns(Board& board, PawnHashEntry& entry) {
 		constexpr Color::Value OppositeSide = Color(Side).getOpposite().value();
 		constexpr Direction::Value Up = Direction::makeRelativeDirection(Side, Direction::UP).value();
-		constexpr Rank Rank2 = Rank::makeRelativeRank(Side, Rank::R2);
-		constexpr BitBoard BBRank2 = BitBoard::fromRank(Rank2);
 
 		const BitBoard pawns = board.byPiece(Piece(Side, PieceType::PAWN));
 		const BitBoard enemyPawns = board.byPiece(Piece(OppositeSide, PieceType::PAWN));

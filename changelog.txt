@@ -1,11 +1,22 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.6.0  ###
+	* Separate endgames evaluation update / 25.12.2023
+	
+	* Aspiration Window + separate lone king evaluation | + ~38 elo
+	* Some endgames evaluation as a draw + KNBK | + ~14 elo
+	* KPsKPs endgame (no visible power boost, but plays those endgames better)
+	* Aspiration Window additional widening iteration | + ~10 elo
+	
+	* Power: 2429 elo
+
+
 ###  Version 0.5  ###
 	* Prunings and reductions update / 23.12.2023
 	
 	* Principal Variation Search | + ~10 elo
-	* Futility Pruning + Razoring | + ~120 elo
-	* Null Move Pruning | + ~70 elo
+	* Futility Pruning + Razoring | + ~100 elo
+	* Null Move Pruning | + ~60 elo
 	* Double Null Move | + ~30 elo
 	* LMR | + ~45 elo
 	* Shallow Depth SEE Pruning | + ~25 elo
@@ -13,7 +24,7 @@
 	
 	* Mate Distance Pruning | no significant power boost, it is more helpful for analysis mode
 	
-	* Power: 2397 elo
+	* Power: 2367 elo
 
 
 ###  Version 0.4  ###

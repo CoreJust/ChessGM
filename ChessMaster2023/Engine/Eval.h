@@ -36,6 +36,8 @@
 *		10) Minor blocking a passed
 *		11) Pawn islands
 *		12) Pawn distortion
+* 
+*		13) Separate evaluation functions for: KXK, KPsKPS
 */
 
 namespace engine {

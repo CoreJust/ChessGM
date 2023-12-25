@@ -37,6 +37,12 @@ namespace scores {
 	extern Score ROOK_BEHIND_PASSED_PAWN;
 	extern Score MINOR_PASSED_BLOCKED;
 
+	extern Value SQUARE_RULE_PASSED;
+	extern Value KING_PASSED_TROPISM;
+	extern Value KING_PAWN_TROPISM;
+
+	extern Value KING_PUSH_TO_CORNER[Square::VALUES_COUNT];
+
 	extern Score PIECE_VALUE[PieceType::VALUES_COUNT]; // Pieces' cost
 	extern Score PST[Piece::VALUES_COUNT][Square::VALUES_COUNT]; // Piece-square tables
 
