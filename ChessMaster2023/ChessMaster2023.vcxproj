@@ -207,6 +207,7 @@
     <ClCompile Include="Utils\CommandHandlingUtils.cpp" />
     <ClCompile Include="Utils\ConsoleColor.cpp" />
     <ClCompile Include="Utils\IO.cpp" />
+    <ClCompile Include="Utils\StringUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Chess\BitBoard.h" />

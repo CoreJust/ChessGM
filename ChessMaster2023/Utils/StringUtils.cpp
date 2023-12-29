@@ -16,12 +16,28 @@
 *	along with ChessMaster. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "StringUtils.h"
 
-/*
-*	ChessMasterInfo.h contains several variables with some information on the engine.
-*/
+namespace str_utils {
+	std::vector<std::string_view> split(std::string_view str, std::string_view delimiters, std::vector<std::string_view> vec) {
+		using Iterator = decltype(str.begin());
 
-constexpr char ENGINE_NAME[] = "ChessMaster";
-constexpr char ENGINE_VERSION[] = "0.6.1";
-constexpr char AUTHOR_NAME[] = "Ilyin Yegor";
+		vec.clear();
+
+		Iterator it = str.begin();
+		while (it != str.end()) {
+			// Skipping delimiters
+			while (delimiters.find(*it) != std::string_view::npos && ++it != str.end());
+
+			// Reading another element
+			if (it != str.end()) {
+				Iterator first = it;
+				while (delimiters.find(*it) == std::string_view::npos && ++it != str.end());
+
+				vec.emplace_back(first, it);
+			}
+		}
+
+		return vec;
+	}
+}

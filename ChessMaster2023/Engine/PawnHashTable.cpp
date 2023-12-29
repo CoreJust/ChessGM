@@ -25,8 +25,12 @@ namespace engine {
     PawnHashEntry PawnHashTable::s_table[1 << PAWN_HASH_TABLE_SIZE_LOG2];
 
     void PawnHashTable::init() {
-        memset(s_table, 0, sizeof(s_table));
+		reset();
     }
+
+	void PawnHashTable::reset() {
+		memset(s_table, 0, sizeof(s_table));
+	}
 
     PawnHashEntry& PawnHashTable::getOrScanPHE(Board& board) {
         const BitBoard wpawns = board.byPiece(Piece::PAWN_WHITE);

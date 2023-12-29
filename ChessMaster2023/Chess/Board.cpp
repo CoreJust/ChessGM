@@ -67,6 +67,8 @@ void Board::operator=(Board&& other) noexcept {
 		return;
 	}
 
+	m_states.~vector();
+
 	memcpy(this, &other, sizeof(Board));
 	memset(&other, 0, sizeof(Board));
 }

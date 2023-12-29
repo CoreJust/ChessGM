@@ -21,6 +21,7 @@ The engine is developed as a hobby.
 12) History Leaf Pruning
 13) Mate Distance Pruning
 14) Aspiration Window
+15) Internal Iterative Deepening
 
 * Quiescence search:
 1) Captures, promotions, checks and check evasions
@@ -28,7 +29,7 @@ The engine is developed as a hobby.
 3) Delta pruning
 
 * Static evaluation:
-1) Material
+1) Material (Separate pieces, Bishop Pair)
 2) Piece-Square Tables
 3) Tempo
 4) Pawns (backward, isolated, double, defended pawns, pawn islands)
@@ -40,7 +41,7 @@ The engine is developed as a hobby.
 ChessMaster was tested in a tournament against several other engines from CCRL
 with time control 0:01+1.
 
-Estimated elo: 2397 (computed with Bayeselo).
+Estimated elo: 2434 (computed with Bayeselo).
 
 ## Contents
 * ChessMaster2023/ - the source files

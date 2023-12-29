@@ -1,5 +1,18 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.6.1  ###
+	* Several minor improvements / 29.12.2023
+	
+	* Bishop pair | + ~3 elo
+	* Internal Iterative Deepening | + ~6 elo
+	
+	* Implemented position extracting and coordinate descent for future auto-tuning
+	
+	* Fixed operations with score pairs | - ~4 elo (most likely because it slightly affected evaluation,
+	  must be okey once the scores are rebalanced)
+	
+	* Power: ~2434 elo
+
 ###  Version 0.6.0  ###
 	* Separate endgames evaluation update / 25.12.2023
 	

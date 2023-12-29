@@ -42,6 +42,8 @@
 *		15) Late Move Reduction
 *		16) Shallow Depth SEE Pruning
 *		17) History Leaf Pruning
+*		18) Aspiration Window
+*		19) Internal Iterative Deepening
 */
 
 namespace engine {

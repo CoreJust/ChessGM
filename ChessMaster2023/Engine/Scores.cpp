@@ -58,6 +58,15 @@ namespace scores {
 	// A passed is blocked with a minor piece
 	Score MINOR_PASSED_BLOCKED = S(-14, -27);
 
+
+	///  MINOR PIECES  ///
+
+	// Bonus for a pair of different-colored bishops
+	Score BISHOP_PAIR = S(35, 20);
+
+
+	///  KPsKPs  ///
+
 	// Square rule is when a passed cannot be reached by the enemy king
 	Value SQUARE_RULE_PASSED = 200;
 

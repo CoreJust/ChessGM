@@ -192,6 +192,13 @@ namespace engine {
 			}
 		}
 
+
+		///  BISHOPS  ///
+
+		if (board.hasDifferentColoredBishops(Side)) {
+			result += scores::BISHOP_PAIR;
+		}
+
 		return result;
 	}
 
@@ -214,6 +221,7 @@ namespace engine {
 
 		// General evaluation
 		Score score = evalSide<Color::WHITE>(board) - evalSide<Color::BLACK>(board);
+
 
 		///  RESULTS  ///
 

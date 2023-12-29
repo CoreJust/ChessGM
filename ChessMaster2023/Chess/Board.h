@@ -351,6 +351,12 @@ public:
 			|| bishops.b_and(BitBoard::fromColor(Color::BLACK)) == BitBoard::EMPTY;
 	}
 
+	CM_PURE constexpr bool hasDifferentColoredBishops(const Color color) const noexcept {
+		BitBoard bishops = this->bishops(color);
+		return bishops.b_and(BitBoard::fromColor(Color::WHITE)) != BitBoard::EMPTY
+			&& bishops.b_and(BitBoard::fromColor(Color::BLACK)) != BitBoard::EMPTY;
+	}
+
 	CM_PURE constexpr BitBoard allPieces() const noexcept {
 		return m_piecesByColor[Color::WHITE].b_or(m_piecesByColor[Color::BLACK]);
 	}

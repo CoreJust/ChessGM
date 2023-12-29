@@ -89,7 +89,8 @@ namespace engine {
 			"\n\tperft [depth: uint] - starts the performance test for the given depth and prints the number of nodes"\
 			"\n\t? - stops the current search and prints the results or makes a move immediately"\
 			"\n\ttest - developer's command, runs all the tests"\
-			"\n\tcompute_eval_err/ceerr [optinal: filename, default: test_suit.fen] - conputes the error of static evaluation for the given positions"
+			"\n\tcompute_eval_err/ceerr [optinal: filename, default: test_suit.fen] - conputes the error of static evaluation for the given positions"\
+			"\n\textract_positions [from: pgn file] [to: fen file, test_suit.fen by default] - extracts positions suitable for ceerr"
 			<< std::endl;
 	}
 
@@ -216,6 +217,12 @@ namespace engine {
 				double err = tuning.computeErr();
 
 				io::g_out << "Evaluation error: " << io::Color::Blue << std::setprecision(10) << err << std::endl;
+			} break;
+			CASE_CMD("extract_positions", 1, 2) {
+				std::string pgnFileName = args[0];
+				std::string fenFileName = args.size() > 1 ? args[1] : "test_suit.fen";
+
+				Tuning::extractPositions(pgnFileName, fenFileName);
 			} break;
 			CMD_DEFAULT
 		}

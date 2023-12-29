@@ -37,7 +37,7 @@
 *		11) Pawn islands
 *		12) Pawn distortion
 * 
-*		13) Separate evaluation functions for: KXK, KPsKPS
+*		13) Separate evaluation functions for: KXK, KPsKPS, KBNK, some drawish endgames
 */
 
 namespace engine {

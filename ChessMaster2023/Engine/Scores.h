@@ -37,6 +37,11 @@ namespace scores {
 	extern Score ROOK_BEHIND_PASSED_PAWN;
 	extern Score MINOR_PASSED_BLOCKED;
 
+	extern Score NO_PAWNS;
+
+	extern Score BISHOP_PAIR;
+	extern Score ROOK_PAIR;
+
 	extern Value SQUARE_RULE_PASSED;
 	extern Value KING_PASSED_TROPISM;
 	extern Value KING_PAWN_TROPISM;

@@ -73,7 +73,7 @@ public:
 class Score final {
 private:
 	union {
-		u32 m_asU32;
+		i32 m_asI32;
 		struct {
 			Value m_middlegameValue;
 			Value m_endgameValue;
@@ -81,19 +81,19 @@ private:
 	};
 
 public:
-	INLINE constexpr Score() noexcept : m_asU32(0) { }
-	INLINE constexpr Score(const Score& other) noexcept : m_asU32(other.m_asU32) { }
-	INLINE constexpr explicit Score(const u32 asU32) noexcept : m_asU32(asU32) { }
+	INLINE constexpr Score() noexcept : m_asI32(0) { }
+	INLINE constexpr Score(const Score& other) noexcept : m_asI32(other.m_asI32) { }
+	INLINE constexpr explicit Score(const u32 asI32) noexcept : m_asI32(asI32) { }
 	INLINE constexpr Score(const Value middlegame, const Value endgame) noexcept
 		: m_middlegameValue(middlegame), m_endgameValue(endgame) { }
 
 	INLINE constexpr Score& operator=(const Score other) noexcept {
-		m_asU32 = other.m_asU32;
+		m_asI32 = other.m_asI32;
 		return *this;
 	}
 
 	CM_PURE constexpr bool operator==(const Score other) const noexcept {
-		return m_asU32 == other.m_asU32;
+		return m_asI32 == other.m_asI32;
 	}
 
 	CM_PURE constexpr Score operator-() const noexcept {
@@ -101,11 +101,11 @@ public:
 	}
 
 	CM_PURE constexpr Score operator+(const Score other) const noexcept {
-		return Score(m_asU32 + other.m_asU32);
+		return Score(m_middlegameValue + other.m_middlegameValue, m_endgameValue + other.m_endgameValue);
 	}
 
 	CM_PURE constexpr Score operator-(const Score other) const noexcept {
-		return Score(m_asU32 - other.m_asU32);
+		return Score(m_middlegameValue - other.m_middlegameValue, m_endgameValue - other.m_endgameValue);
 	}
 
 	CM_PURE constexpr Score operator*(const i32 value) const noexcept {
@@ -113,12 +113,14 @@ public:
 	}
 
 	INLINE constexpr Score& operator+=(const Score other) noexcept {
-		m_asU32 += other.m_asU32;
+		m_middlegameValue += other.m_middlegameValue;
+		m_endgameValue += other.m_endgameValue;
 		return *this;
 	}
 
 	INLINE constexpr Score& operator-=(const Score other) noexcept {
-		m_asU32 -= other.m_asU32;
+		m_middlegameValue -= other.m_middlegameValue;
+		m_endgameValue -= other.m_endgameValue;
 		return *this;
 	}
 
@@ -128,6 +130,14 @@ public:
 
 	CM_PURE constexpr Value endgame() const noexcept {
 		return m_endgameValue;
+	}
+
+	CM_PURE Value* middlegamePtr() noexcept {
+		return &m_middlegameValue;
+	}
+
+	CM_PURE Value* endgamePtr() noexcept {
+		return &m_endgameValue;
 	}
 
 	CM_PURE constexpr Value collapse(const Material material) const noexcept {

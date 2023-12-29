@@ -30,7 +30,7 @@ namespace engine {
 	public:
 		// A single position from a file
 		struct Position {
-			std::string fen;
+			Board board;
 			float result; // Either of 0.0, 0.5, or 1.0
 		};
 
@@ -38,8 +38,16 @@ namespace engine {
 		std::vector<Position> m_positions;
 
 	public:
+		// Extracts a set of positions from the given pgn file
+		// <pgnFileName> has no supposed extension, so it must be given explicitly
+		// It works not with a true pgn, but rather with a pgn where moves were translated into long algebraic form
+		static void extractPositions(const std::string& pgnFileName, const std::string& positionsFileName = "test_suit.fen");
+
 		// Loads an epd file with: fen, res (result)
 		void loadPositions(const std::string& fileName);
+
+		// Tries to optimize the given scores by minimizing the error with coordinate descent
+		void optimizeScores(const std::vector<Value*>& scores, u32 iterationsCount);
 
 		// Computes the mean error with the current evaluation function
 		double computeErr();

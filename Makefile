@@ -11,7 +11,7 @@ RM = del /s /q
 
 ADDITIONAL_INCLUDE_DIRS = -I $(mkfile_dir)/ChessMaster2023
 
-CFLAGS = -Wall -Ofast -std=c++20 $(ADDITIONAL_INCLUDE_DIRS)
+CFLAGS = -Wall -Wno-class-memaccess -Ofast -std=c++20 $(ADDITIONAL_INCLUDE_DIRS)
 LDFLAGS = -static-libstdc++
 
 SRCS := $(wildcard *.cpp) $(wildcard */*.cpp) $(wildcard */*/*.cpp) $(wildcard */*/*/*.cpp)

@@ -50,6 +50,7 @@ namespace engine {
 
 	public:
 		static void init();
+		static void reset();
 
 		// Returns an entry from the table if there is, or creates a new one
 		static PawnHashEntry& getOrScanPHE(Board& board);

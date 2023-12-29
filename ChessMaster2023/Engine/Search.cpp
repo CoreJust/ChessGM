@@ -196,9 +196,9 @@ namespace engine {
 			}
 		}
 
-		if constexpr (NT == NodeType::PV) {
+		//if constexpr (NT == NodeType::PV) {
 			g_PVs[ply].clear();
-		}
+		//}
 
 		// Check if the game ended in a draw
 		if (board.isDraw(ply)) {
@@ -319,6 +319,16 @@ namespace engine {
 		}
 
 
+		/// INTERNAL ITERATIVE DEEPENING  ///
+
+		if (tableMove.isNullMove() && depth > 6) {
+			search<NT>(board, alpha, beta, depth - 6, ply);
+			if (g_PVs[ply].size()) {
+				tableMove = g_PVs[ply][0];
+			}
+		}
+
+
 		///  RECURSIVE SEARCH  ///
 
 		u8 legalMovesCount = 0;
@@ -432,12 +442,12 @@ namespace engine {
 				bestMove = m;
 
 				// Updating the PV
-				if constexpr (NT == NodeType::PV) {
+				//if constexpr (NT == NodeType::PV) {
 					g_PVs[ply].clear();
 					g_PVs[ply].push(m);
 					g_PVs[ply].mergeWith(g_PVs[ply + 1], 1);
-				}
-			} else if constexpr (NT == NodeType::PV) {
+				//}
+			} else /*if constexpr (NT == NodeType::PV)*/ {
 				if (!ply && legalMovesCount == 1) {
 					g_PVs[ply].clear();
 					g_PVs[ply].push(m);

@@ -36,8 +36,8 @@
 *		   e.g. pawns advance
 * 
 *	Canceled ideas (were not useful in the version they were expected to be added in):
-*		Countermove Table, SEE in move ordering, Internal Iterative Deepening, Mate Killers, Duo Pawns,
-*		Candidate Pawns, Threat Move detection with Null Move, Multicut, Probcut
+*		Countermove Table, SEE in move ordering, Mate Killers, Duo Pawns,
+*		Candidate Pawns, Threat Move detection with Null Move, Multicut, Probcut, No pawns, Rook pair
 *		
 * 
 *	TODO by future versions (general plans, features to try):
@@ -62,10 +62,7 @@
 *		4) Ensuring correct Makefile
 *		5) Ensuring all the changes were properly documented in changelog.txt and the readme.md was properly modified
 * 
-*	Current version TODO: 
-*		0.6) Miscelaneous small updates:
-*		0.6.1) Evaluation for material combinations
-*		0.6.2) Checking if the stuff that didn't work in the previous versions would work now, set up the AW
+*	Current version TODO: -
 * 
 *	Bugs: -
 */

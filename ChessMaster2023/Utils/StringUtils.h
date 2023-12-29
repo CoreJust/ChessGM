@@ -19,6 +19,7 @@
 #pragma once
 #include <cctype>
 #include <string_view>
+#include <vector>
 #include <numeric>
 #include <concepts>
 
@@ -69,4 +70,6 @@ namespace str_utils {
 		u32 _ = 0;
 		return fromString<T>(str, _);
 	}
+
+	std::vector<std::string_view> split(std::string_view str, std::string_view delimiters, std::vector<std::string_view> vec = {});
 }
