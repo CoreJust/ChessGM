@@ -1,5 +1,5 @@
 # Overview
-ChessMaster2023 is a chess engine written in C++. It supports both Winboard and UCI and has its own console interface. 
+ChessGM is a chess engine written in C++. It supports both Winboard and UCI and has its own console interface. 
 
 The engine is based on my old project (that I have never published), some of the auxiliary functions (mostly move generation, the magic bitboards) are based on [Stockfish](https://github.com/official-stockfish/Stockfish/tree/master).
 
@@ -38,7 +38,7 @@ The engine is developed as a hobby.
 7) Separate evaluation functions for some endgames (KXK, KPsKPs, KBNK, drawish endgames)
 
 ## Engine power
-ChessMaster was tested in a tournament against several other engines from CCRL
+ChessGM was tested in a tournament against several other engines from CCRL
 with time control 0:01+1.
 
 Estimated elo: 2434 (computed with Bayeselo).
@@ -57,7 +57,7 @@ There is a windows binary provided. The project is made in Visual Studio and ful
 To build with GCC, a Makefile is provided.
 
 # Roadmap
-The features that are supposed to be implemented by the future versions (most of which were implemented in the old ChessMaster of mine):
+The features that are supposed to be implemented by the future versions (most of which were implemented in the old ChessGM of mine):
 
 * 0.7) Pieces update (mobility, space, connectivity, center control, trapped pieces...)
 * 0.7.1) Knights and bishops (outposts, bad bishop, fianchetto, color weakness
@@ -74,4 +74,4 @@ The features that are supposed to be implemented by the future versions (most of
 
 
 # License
-ChessMaster is distributed under [GNU General Public License](https://www.gnu.org/licenses/).
+ChessGM is distributed under [GNU General Public License](https://www.gnu.org/licenses/).

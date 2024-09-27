@@ -9,7 +9,7 @@ RM = del /s /q
 
 # End of directories and settings that can be modified
 
-ADDITIONAL_INCLUDE_DIRS = -I $(mkfile_dir)/ChessMaster2023
+ADDITIONAL_INCLUDE_DIRS = -I $(mkfile_dir)/ChessGM
 
 CFLAGS = -Wall -Wno-class-memaccess -Ofast -std=c++20 $(ADDITIONAL_INCLUDE_DIRS)
 LDFLAGS = -static-libstdc++
@@ -24,7 +24,7 @@ build: all clean
 rebuild: clean build
 
 all: $(OBJS)
-	$(CC) -o ChessMaster2023.exe $(OBJS) $(LDFLAGS)
+	$(CC) -o ChessGM.exe $(OBJS) $(LDFLAGS)
 	
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@

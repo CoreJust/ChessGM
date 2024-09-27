@@ -1,5 +1,14 @@
 ###  ChessMaster2023 by Ilyin Yegor changelog  ###
 
+###  Version 0.7  ###
+	* Pieces evaluation update / 30.12.2023
+	
+	* Piece Mobility | + ~60 elo
+	* Outposts | + ~5 elo
+
+	* Power: 2500 elo
+
+
 ###  Version 0.6.1  ###
 	* Several minor improvements / 29.12.2023
 	
