@@ -22,6 +22,7 @@
 #include "Utils/CommandHandlingUtils.h"
 #include "Utils/StringUtils.h"
 #include "Search.h"
+#include "TranspositionTable.h"
 
 namespace engine {
 	void uciGo() {
@@ -43,8 +44,10 @@ namespace engine {
 			CASE_CMD_WITH_VARIANT("quit", "q", 0, 0) return false;
 			CASE_CMD("debug", 1, 1) options::g_debugMode = (args[0] == "on"); break;
 			CASE_CMD("isready", 0, 0) io::g_out << "readyok" << std::endl; break;
-			CASE_CMD("setoption", 1, 2) {
-				// TODO: implement
+			CASE_CMD("setoption", 4, 6) {
+				if (args[0] == "name" && args[1] == "Hash" && args[3] == "value") {
+					engine::TranspositionTable::setSize(atoi(args[4].c_str()));
+				}
 			} break;
 			IGNORE_CMD("register")
 			CASE_CMD("ucinewgame", 0, 0) {

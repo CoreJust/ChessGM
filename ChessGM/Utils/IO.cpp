@@ -32,6 +32,7 @@
 
 #include "ChessGMInfo.h"
 #include "StringUtils.h"
+#include "Engine/TranspositionTable.h"
 
 ///  GLOBAL VARIABLES  ///
 
@@ -87,7 +88,8 @@ void initForXboard() {
 
 void initForUCI() {
 	io::g_out << "id name " << ENGINE_NAME << " " << ENGINE_VERSION << std::endl
-		<< "id author " << AUTHOR_NAME << std::endl;
+		<< "id author " << AUTHOR_NAME << std::endl
+		<< "option name Hash type spin default " << (engine::TranspositionTable::DEFAULT_TABLE_SIZE >> 20) << " min 1 max 4096" << std::endl;
 	io::g_out << "uciok" << std::endl;
 }
 

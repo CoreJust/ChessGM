@@ -72,7 +72,7 @@ namespace engine {
 	class TranspositionTable final {
 	public:
 		// Default table size in bytes.
-		constexpr inline static uint32_t DEFAULT_TABLE_SIZE = 64 * 1024 * 1024;
+		constexpr inline static uint32_t DEFAULT_TABLE_SIZE = 256 * 1024 * 1024;
 
 	private:
 		static TableEntryCluster* s_table;
@@ -81,6 +81,7 @@ namespace engine {
 
 	public:
 		static void init();
+		static void setSize(uint32_t size);
 		static void destroy();
 
 		INLINE static void setRootAge(const u16 age) {

@@ -3,10 +3,14 @@
 ###  Version 0.7  ###
 	* Pieces evaluation update / 30.12.2023
 	
+	* Renamed engine to ChessGM.
+	
 	* Piece Mobility | + ~60 elo
 	* Outposts | + ~5 elo
+	
+	* Added optional hash table size, set default size to 256Mb.
 
-	* Power: 2500 elo
+	* Power: 2450 elo
 
 
 ###  Version 0.6.1  ###
@@ -20,7 +24,7 @@
 	* Fixed operations with score pairs | - ~4 elo (most likely because it slightly affected evaluation,
 	  must be okey once the scores are rebalanced)
 	
-	* Power: ~2434 elo
+	* Power: ~2404 elo
 
 ###  Version 0.6.0  ###
 	* Separate endgames evaluation update / 25.12.2023

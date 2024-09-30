@@ -44,9 +44,9 @@ with time control 0:01+1.
 Estimated elo: 2434 (computed with Bayeselo).
 
 ## Contents
-* ChessMaster2023/ - the source files
-* ChessMaster2023.sln - Visual Studio Solution
-* ChessMaster2023.exe - executable for Windows
+* ChessGM/ - the source files
+* ChessGM.sln - Visual Studio Solution
+* ChessGM.exe - executable for Windows
 * Makefile - can be used to build the engine with GCC
 * changelog.txt - the history of versions
 * LICENSE - the license (GNU GPL)

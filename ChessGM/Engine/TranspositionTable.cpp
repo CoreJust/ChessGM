@@ -32,6 +32,18 @@ namespace engine {
 		s_tableSize = DEFAULT_TABLE_SIZE / sizeof(TableEntryCluster);
 	}
 
+	void TranspositionTable::setSize(uint32_t size) {
+		uint32_t sizeInNodes = size / sizeof(TableEntryCluster);
+		if (s_tableSize == sizeInNodes) {
+			return;
+		}
+
+		s_table = reinterpret_cast<TableEntryCluster*>(realloc(s_table, size));
+		memset(s_table, 0, DEFAULT_TABLE_SIZE);
+
+		s_tableSize = sizeInNodes;
+	}
+
 	void TranspositionTable::destroy() { 
 		if (s_table) {
 			free(s_table);
